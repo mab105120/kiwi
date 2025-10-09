@@ -7,9 +7,10 @@ from rich.table import Table
 # internal dependencies
 from cli import constants
 from domain.MenuFunctions import MenuFunctions
-from domain.User import User
-from domain.Security import Security
-from domain.Portfolio import Portfolio
+from service.login_service import login
+from service.user_service import get_all_users, create_user, delete_user, print_all_users
+from service.security_service import get_all_securities, print_all_securities
+from service.portfolio_service import get_all_portfolios, print_all_portfolios, create_portfolio
 import db
 
 class UnsupportedMenuError(Exception):
@@ -25,89 +26,11 @@ _menus: Dict[int, str] = {
     constants.MARKET_PLACE: "----\nMarketplace\n----\n1. View securities\n2. Place purchase order\n0. Back to main menu"
 }
 
-def get_login_inputs() -> Tuple[str, str]:
-    username = _console.input("Username: ")
-    password=_console.input("Password: ")
-    _console.print("\n")
-    return username, password
-
-# throw an error if login failed, return nothing otherwise
-def login():
-    username, password = get_login_inputs()
-    user = db.query_user(username)
-    if not user or user.password != password:
-        raise Exception("Login Failed")
-    db.set_logged_in_user(user)
-    
-def get_all_users() -> List[User]:
-    return db.query_all_users()
-
-def print_all_users(users: List[User]):
-    table = Table(title="Users")
-    table.add_column("Username", justify="right", style="cyan", no_wrap=True)
-    table.add_column("First Name", style="magenta")
-    table.add_column("Last Name", style="magenta")
-    table.add_column("Balance", justify="right", style="green")
-    for user in users:
-        table.add_row(user.username, user.firstname, user.lastname, f"${user.balance:.2f}")
-    _console.print(table)
-
-def create_user() -> str:
-    username = _console.input("Username: ")
-    password = _console.input("Password: ")
-    firstname = _console.input("First Name: ")
-    lastname = _console.input("Last Name: ")
-    balance = float(_console.input("Balance: "))
-    db.create_new_user(User(username, password, firstname, lastname, balance))
-    return f"User {username} created successfully"
-
-def delete_user() -> str:
-    username = _console.input("Username of the user to delete: ")
-    db.delete_user(username)
-    return f"User {username} deleted successfully"
-
 def navigate_to_manage_user_menu() -> int:
     logged_in_user = db.get_logged_in_user()
     if logged_in_user and logged_in_user.username != "admin":
         raise UnsupportedMenuError("Only admin user can manage users")
     return constants.MANAGE_USERS_MENU
-
-def create_portfolio():
-    name = _console.input("Portfolio name: ")
-    description = _console.input("Portfolio description: ")
-    investment_strategy = _console.input("Investment Strategy: ")
-    user = db.get_logged_in_user()
-    portfolio = Portfolio(name, description, investment_strategy, user)
-    db.create_new_portfolio(portfolio)
-    return f"Created new portfolio {name}"
-
-def get_all_portfolios() -> List[Portfolio]:
-    return db.get_all_portfolio_logged_in_user()
-
-def print_all_portfolios(portfolios: List[Portfolio]):
-    if len(portfolios) == 0:
-        _console.print("No portfolios exist. Add new portfolios")
-    table = Table(title="Portfolios")
-    table.add_column("Name")
-    table.add_column("Description")
-    table.add_column("Investment strategy")
-    table.add_column("Username")
-    for portfolio in portfolios:
-        table.add_row(portfolio.name, portfolio.description, portfolio.investment_strategy, portfolio.user.username)
-    _console.print(table)
-    
-
-def get_all_securities() -> List[Security]:
-    return db.get_all_securities()
-
-def print_all_securities(securities: List[Security]):
-    table = Table(title="Securities")
-    table.add_column("Ticker")
-    table.add_column("Issuer")
-    table.add_column("Price")
-    for security in securities:
-        table.add_row(security.ticker, security.issuer, str(security.price))
-    _console.print(table)
 
 _router: Dict[str, MenuFunctions] = {
     "0.1": MenuFunctions(executor=login, navigator=lambda: constants.MAIN_MENU),
@@ -148,7 +71,6 @@ def handle_user_selection(menu_id: int, user_selection: int):
     except Exception as e:
         print_error(f"Error: {str(e)}")
         print_menu(menu_id)
-
 
 def print_menu(menu_id: int):
     _console.print(_menus[menu_id])
