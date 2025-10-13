@@ -7,7 +7,7 @@ from rich.table import Table
 # internal dependencies
 from cli import constants
 from domain.MenuFunctions import MenuFunctions
-from service.login_service import login
+from service.login_service import login, logout
 from service.user_service import get_all_users, create_user, delete_user, print_all_users
 from service.security_service import get_all_securities, print_all_securities
 from service.portfolio_service import get_all_portfolios, print_all_portfolios, create_portfolio
@@ -36,13 +36,13 @@ _router: Dict[str, MenuFunctions] = {
     "0.1": MenuFunctions(executor=login, navigator=lambda: constants.MAIN_MENU),
     "1.1": MenuFunctions(navigator=navigate_to_manage_user_menu),
     "1.2": MenuFunctions(navigator=lambda: constants.MANAGE_PORTFOLIO),
-    "2.1": MenuFunctions(executor=get_all_users, printer=print_all_users),
-    "2.2": MenuFunctions(executor=create_user, printer=lambda x: _console.print(f'\n{x}')), # add user
-    "2.3": MenuFunctions(executor=delete_user, printer=lambda x: _console.print(f'\n{x}')), # delete user
     "1.3": MenuFunctions(navigator=lambda: constants.MARKET_PLACE),
-    "4.1": MenuFunctions(executor=get_all_securities, printer=print_all_securities),
-    "3.1": MenuFunctions(executor=get_all_portfolios, printer=print_all_portfolios),
-    "3.2": MenuFunctions(executor=create_portfolio, printer=lambda x: _console.print(f'\n{x}'))
+    "2.1": MenuFunctions(executor=get_all_users, printer=lambda users: _console.print(print_all_users(users))),
+    "2.2": MenuFunctions(executor=create_user, printer=lambda x: _console.print(f'\n{x}')),
+    "2.3": MenuFunctions(executor=delete_user, printer=lambda x: _console.print(f'\n{x}')),
+    "3.1": MenuFunctions(executor=get_all_portfolios, printer=lambda portfolios: _console.print(print_all_portfolios(portfolios))),
+    "3.2": MenuFunctions(executor=create_portfolio, printer=lambda x: _console.print(f'\n{x}')),
+    "4.1": MenuFunctions(executor=get_all_securities, printer=lambda securities: _console.print(print_all_securities(securities))),
 }
 
 def print_error(error: str):
@@ -53,7 +53,7 @@ def handle_user_selection(menu_id: int, user_selection: int):
         if menu_id == constants.LOGIN_MENU:
             sys.exit(0)
         elif menu_id == constants.MAIN_MENU:
-            db.reset_logged_in_user()
+            logout()
             print_menu(constants.LOGIN_MENU)
         else:
             print_menu(constants.MAIN_MENU)
@@ -62,7 +62,7 @@ def handle_user_selection(menu_id: int, user_selection: int):
     try:
         if menu_functions.executor:
             result = menu_functions.executor()
-            if result and menu_functions.printer:
+            if result is not None and menu_functions.printer:
                 menu_functions.printer(result)
         if menu_functions.navigator:
             print_menu(menu_functions.navigator())

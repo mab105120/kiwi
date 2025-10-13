@@ -19,7 +19,7 @@ _securities: Dict[str, Security] = {
     "MFST": Security("MSFT", "Microsoft Inc", 80)
 }
 
-_portfolios: Dict[int: Portfolio] = {}
+_portfolios: Dict[int, Portfolio] = {}
 
 _logged_in_user: User|None = None
 
@@ -34,11 +34,8 @@ def reset_logged_in_user():
     global _logged_in_user
     _logged_in_user = None
 
-def query_user(username: str) -> User|None:
-    try:
-        return _users[username]
-    except KeyError:
-        return None
+def query_user(username: str) -> User | None:
+    return _users.get(username)
 
 def query_all_users() -> List[User]:
     return list(_users.values())
@@ -49,13 +46,8 @@ def create_new_user(user: User):
     _users[user.username] = user
 
 def delete_user(username: str):
-    if username not in _users:
-        raise Exception(f"User with username {username} does not exist")
-    if username == "admin":
-        raise Exception("Cannot delete admin user")
-    del _users[username]
+    _users.pop(username, None)
 
-# CRUD operations on securities Create, Read, Update (not supported), Delete (not supported)
 def get_all_securities() -> List[Security]:
     return list(_securities.values())
 
@@ -65,14 +57,16 @@ def get_all_portfolios() -> List[Portfolio]:
 def get_all_portfolio_logged_in_user() -> List[Portfolio]:
     user_portfolios = []
     for portfolio in get_all_portfolios():
-        if portfolio.user.username == _logged_in_user.username:
+        if _logged_in_user and portfolio.user.username == _logged_in_user.username:
             user_portfolios.append(portfolio)
     return user_portfolios
 
-def create_new_portfolio(portfolio: Portfolio):
+def create_new_portfolio(portfolio: Portfolio) -> int:
     id = _portfolio_id
-    portfolio.id = id
+    portfolio.set_id(id)
     _portfolios[id] = portfolio
+    increment_portfolio_id()
+    return id
 
 def increment_portfolio_id():
     global _portfolio_id
