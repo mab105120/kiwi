@@ -54,6 +54,19 @@ def get_all_securities() -> List[Security]:
 def get_all_portfolios() -> List[Portfolio]:
     return list(_portfolios.values())
 
+def get_portfolio_by_id(portfolio_id: int) -> Portfolio|None:
+    return _portfolios.get(portfolio_id)
+
+def get_portfolios_by_username(username: str) -> List[Portfolio]:
+    user_portfolios = []
+    for portfolio in get_all_portfolios():
+        if portfolio.user.username == username:
+            user_portfolios.append(portfolio)
+    return user_portfolios
+
+def delete_portfolio_by_id(portfolio_id: int):
+    _portfolios.pop(portfolio_id, None)
+
 def get_all_portfolio_logged_in_user() -> List[Portfolio]:
     user_portfolios = []
     for portfolio in get_all_portfolios():
