@@ -9,8 +9,8 @@ from cli import constants
 from domain.MenuFunctions import MenuFunctions
 from service.login_service import login, logout
 from service.user_service import get_all_users, create_user, delete_user, print_all_users
-from service.security_service import get_all_securities, print_all_securities
-from service.portfolio_service import get_all_portfolios, print_all_portfolios, create_portfolio, delete_portfolio
+from service.security_service import get_all_securities, print_all_securities, place_purchase_order
+from service.portfolio_service import get_all_portfolios, print_all_portfolios, create_portfolio, delete_portfolio, create_investments_in_portfolio_table, liquidate_investment
 import db
 
 class UnsupportedMenuError(Exception):
@@ -22,7 +22,7 @@ _menus: Dict[int, str] = {
     constants.LOGIN_MENU: "----\nWelcome to Kiwi\n----\n1. Login\n0. Exit",
     constants.MAIN_MENU: "----\nMain Menu\n----\n1. Manage Users\n2. Manage portfolios\n3. Market place\n0. Logout",
     constants.MANAGE_USERS_MENU: "----\nManage Users\n----\n1. View users\n2. Add user\n3. Delete user\n0. Back to main menu",
-    constants.MANAGE_PORTFOLIO: "----\nPortfolio Menu\n----\n1. View portfolios\n2. Create new portfolio\n3. Delete Portfolio\n 4. Liquidate investment\n0. Back to main menu",
+    constants.MANAGE_PORTFOLIO: "----\nPortfolio Menu\n----\n1. View portfolios\n2. Create new portfolio\n3. Delete Portfolio\n4. View Investments\n5. Liquidate investment\n0. Back to main menu",
     constants.MARKET_PLACE: "----\nMarketplace\n----\n1. View securities\n2. Place purchase order\n0. Back to main menu"
 }
 
@@ -43,7 +43,10 @@ _router: Dict[str, MenuFunctions] = {
     "3.1": MenuFunctions(executor=get_all_portfolios, printer=lambda portfolios: _console.print(print_all_portfolios(portfolios))),
     "3.2": MenuFunctions(executor=create_portfolio, printer=lambda x: _console.print(f'\n{x}')),
     "3.3": MenuFunctions(executor=delete_portfolio, printer=lambda x: _console.print(f'\n{x}')),
+    "3.4": MenuFunctions(executor=create_investments_in_portfolio_table, printer=lambda table: _console.print(table)),
+    "3.5": MenuFunctions(executor=liquidate_investment, printer=lambda x: _console.print(f'\n{x}')),
     "4.1": MenuFunctions(executor=get_all_securities, printer=lambda securities: _console.print(print_all_securities(securities))),
+    "4.2": MenuFunctions(executor=place_purchase_order, printer=lambda x: _console.print(f'\n{x}')),
 }
 
 def print_error(error: str):
@@ -59,7 +62,11 @@ def handle_user_selection(menu_id: int, user_selection: int):
         else:
             print_menu(constants.MAIN_MENU)
     formatted_user_input = f"{str(menu_id)}.{str(user_selection)}"
-    menu_functions = _router[formatted_user_input]
+    menu_functions = _router.get(formatted_user_input)
+    if not menu_functions:
+        print_error("Invalid menu selection. Please try again.")
+        print_menu(menu_id)
+        return
     try:
         if menu_functions.executor:
             result = menu_functions.executor()
@@ -74,6 +81,13 @@ def handle_user_selection(menu_id: int, user_selection: int):
         print_menu(menu_id)
 
 def print_menu(menu_id: int):
-    _console.print(_menus[menu_id])
-    user_selection = int(_console.input(">> ")) # TODO: check if the user input is valid
+    try:
+        _console.print(_menus[menu_id])
+        user_selection = int(_console.input(">> ")) # TODO: check if the user input is valid
+    except ValueError:
+        print_error("Invalid input. Please try again.")
+        print_menu(menu_id)
+    except KeyError:
+        print_error("Invalid menu selection. Please try again.")
+        print_menu(menu_id)
     handle_user_selection(menu_id, user_selection)
