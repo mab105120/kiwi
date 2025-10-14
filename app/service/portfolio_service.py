@@ -4,6 +4,10 @@ import db
 from cli.input_collector import collect_inputs
 from domain.Portfolio import Portfolio
 
+class UnsupportedPortfolioOperationError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+
 def create_portfolio() -> str:
     user_inputs = collect_inputs({
         "Portfolio name": "name", # TODO: remove the colon and space
@@ -32,4 +36,13 @@ def print_all_portfolios(portfolios: List[Portfolio]) -> Table|str:
     for portfolio in portfolios:
         table.add_row(str(portfolio.id), portfolio.name, portfolio.description, f"${portfolio.get_portfolio_value():.2f}")
     return table
-    
+
+def delete_portfolio(portfolio_id: int) -> str:
+    # if the portfolio does not exist or the investments attribute is not an empty list, raise an exception
+    portfolio = db.get_portfolio_by_id(portfolio_id)
+    if not portfolio:
+        raise UnsupportedPortfolioOperationError(f"Portfolio with id {portfolio_id} does not exist")
+    if len(portfolio.investments) > 0:
+        raise UnsupportedPortfolioOperationError(f"Portfolio with id {portfolio_id} is not empty. Please liquidate investments before deleting the portfolio")
+    db.delete_portfolio_by_id(portfolio_id)
+    return f"Deleted portfolio with id {portfolio_id}"

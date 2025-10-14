@@ -45,7 +45,11 @@ def delete_user() -> str:
     username = collect_inputs({"Username of user to delete": "username"})["username"]
     if username == "admin":
         raise UnsupportedUserOperationError("Cannot delete admin user")
-    if not db.query_user(username):
+    user = db.query_user(username)
+    if not user:
         raise UnsupportedUserOperationError(f"User with username {username} does not exist")
+    user_portfolios = db.get_portfolios_by_username(username)
+    if len(user_portfolios) > 0:
+        raise UnsupportedUserOperationError(f"User with username {username} has existing portfolios. Please delete all portfolios before deleting the user")
     db.delete_user(username)
     return f"User {username} deleted successfully"

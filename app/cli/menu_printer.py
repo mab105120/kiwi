@@ -10,7 +10,7 @@ from domain.MenuFunctions import MenuFunctions
 from service.login_service import login, logout
 from service.user_service import get_all_users, create_user, delete_user, print_all_users
 from service.security_service import get_all_securities, print_all_securities
-from service.portfolio_service import get_all_portfolios, print_all_portfolios, create_portfolio
+from service.portfolio_service import get_all_portfolios, print_all_portfolios, create_portfolio, delete_portfolio
 import db
 
 class UnsupportedMenuError(Exception):
@@ -22,7 +22,7 @@ _menus: Dict[int, str] = {
     constants.LOGIN_MENU: "----\nWelcome to Kiwi\n----\n1. Login\n0. Exit",
     constants.MAIN_MENU: "----\nMain Menu\n----\n1. Manage Users\n2. Manage portfolios\n3. Market place\n0. Logout",
     constants.MANAGE_USERS_MENU: "----\nManage Users\n----\n1. View users\n2. Add user\n3. Delete user\n0. Back to main menu",
-    constants.MANAGE_PORTFOLIO: "----\nPortfolio Menu\n----\n1. View portfolios\n2. Create new portfolio\n3. Liquidate investment\n0. Back to main menu",
+    constants.MANAGE_PORTFOLIO: "----\nPortfolio Menu\n----\n1. View portfolios\n2. Create new portfolio\n3. Delete Portfolio\n 4. Liquidate investment\n0. Back to main menu",
     constants.MARKET_PLACE: "----\nMarketplace\n----\n1. View securities\n2. Place purchase order\n0. Back to main menu"
 }
 
@@ -42,6 +42,7 @@ _router: Dict[str, MenuFunctions] = {
     "2.3": MenuFunctions(executor=delete_user, printer=lambda x: _console.print(f'\n{x}')),
     "3.1": MenuFunctions(executor=get_all_portfolios, printer=lambda portfolios: _console.print(print_all_portfolios(portfolios))),
     "3.2": MenuFunctions(executor=create_portfolio, printer=lambda x: _console.print(f'\n{x}')),
+    "3.3": MenuFunctions(executor=delete_portfolio, printer=lambda x: _console.print(f'\n{x}')),
     "4.1": MenuFunctions(executor=get_all_securities, printer=lambda securities: _console.print(print_all_securities(securities))),
 }
 
