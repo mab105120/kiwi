@@ -1,1 +1,7 @@
+markdown-it-py==4.0.0
+mdurl==0.1.2
+Pygments==2.19.2
+PyMySQL==1.1.2
 rich==14.1.0
+SQLAlchemy==2.0.44
+typing_extensions==4.15.0

@@ -1,17 +1,17 @@
 # native modules
 import sys
-from typing import Dict, Tuple, List
+from typing import Dict
 # external dependencies
 from rich.console import Console
 from rich.table import Table
 # internal dependencies
+from session_state import get_logged_in_user
 from cli import constants
 from domain.MenuFunctions import MenuFunctions
 from service.login_service import login, logout
-from service.user_service import get_all_users, create_user, delete_user, print_all_users
-from service.security_service import get_all_securities, print_all_securities, place_purchase_order
-from service.portfolio_service import get_all_portfolios, print_all_portfolios, create_portfolio, delete_portfolio, create_investments_in_portfolio_table, liquidate_investment
-import db
+from service.user_service import get_all_users, create_user, delete_user, build_users_table
+from service.security_service import get_all_securities, build_securities_table, place_purchase_order
+from service.portfolio_service import get_all_portfolios, build_portfolios_table, create_portfolio, delete_portfolio, build_portfolio_investments_table, liquidate_investment
 
 class UnsupportedMenuError(Exception):
     def __init__(self, message: str):
@@ -27,7 +27,7 @@ _menus: Dict[int, str] = {
 }
 
 def navigate_to_manage_user_menu() -> int:
-    logged_in_user = db.get_logged_in_user()
+    logged_in_user = get_logged_in_user()
     if logged_in_user and logged_in_user.username != "admin":
         raise UnsupportedMenuError("Only admin user can manage users")
     return constants.MANAGE_USERS_MENU
@@ -37,15 +37,15 @@ _router: Dict[str, MenuFunctions] = {
     "1.1": MenuFunctions(navigator=navigate_to_manage_user_menu),
     "1.2": MenuFunctions(navigator=lambda: constants.MANAGE_PORTFOLIO),
     "1.3": MenuFunctions(navigator=lambda: constants.MARKET_PLACE),
-    "2.1": MenuFunctions(executor=get_all_users, printer=lambda users: _console.print(print_all_users(users))),
+    "2.1": MenuFunctions(executor=get_all_users, printer=lambda users: _console.print(build_users_table(users))),
     "2.2": MenuFunctions(executor=create_user, printer=lambda x: _console.print(f'\n{x}')),
     "2.3": MenuFunctions(executor=delete_user, printer=lambda x: _console.print(f'\n{x}')),
-    "3.1": MenuFunctions(executor=get_all_portfolios, printer=lambda portfolios: _console.print(print_all_portfolios(portfolios))),
+    "3.1": MenuFunctions(executor=get_all_portfolios, printer=lambda portfolios: _console.print(build_portfolios_table(portfolios))),
     "3.2": MenuFunctions(executor=create_portfolio, printer=lambda x: _console.print(f'\n{x}')),
     "3.3": MenuFunctions(executor=delete_portfolio, printer=lambda x: _console.print(f'\n{x}')),
-    "3.4": MenuFunctions(executor=create_investments_in_portfolio_table, printer=lambda table: _console.print(table)),
+    "3.4": MenuFunctions(executor=build_portfolio_investments_table, printer=lambda table: _console.print(table)),
     "3.5": MenuFunctions(executor=liquidate_investment, printer=lambda x: _console.print(f'\n{x}')),
-    "4.1": MenuFunctions(executor=get_all_securities, printer=lambda securities: _console.print(print_all_securities(securities))),
+    "4.1": MenuFunctions(executor=get_all_securities, printer=lambda securities: _console.print(build_securities_table(securities))),
     "4.2": MenuFunctions(executor=place_purchase_order, printer=lambda x: _console.print(f'\n{x}')),
 }
 

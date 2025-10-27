@@ -1,18 +1,23 @@
-
 from typing import List
 from rich.table import Table
-from domain.User import User
+from sqlalchemy.exc import IntegrityError
+from domain import User
 from cli.input_collector import collect_inputs
-import db
+import database
 
-class UnsupportedUserOperationError(Exception):
-    def __init__(self, message: str):
-        super().__init__(message)
+class UnsupportedUserOperationError(Exception): pass
 
 def get_all_users() -> List[User]:
-    return db.query_all_users()
+    try:
+        session = database.get_session()
+        users = session.query(User).all()
+        return users
+    except Exception as e:
+        raise UnsupportedUserOperationError(f"Failed to retrieve users due to error: {str(e)}")
+    finally:
+        session.close() if session else None
 
-def print_all_users(users: List[User]) -> Table:
+def build_users_table(users: List[User]) -> Table:
     table = Table(title="Users")
     table.add_column("Username", justify="right", style="cyan", no_wrap=True)
     table.add_column("First Name", style="magenta")
@@ -21,6 +26,20 @@ def print_all_users(users: List[User]) -> Table:
     for user in users:
         table.add_row(user.username, user.firstname, user.lastname, f"${user.balance:.2f}")
     return table
+
+def update_user_balance(username: str, new_balance: float) -> str:
+    try:
+        session = database.get_session()
+        user = session.query(User).filter_by(username=username).one_or_none()
+        if not user:
+            raise UnsupportedUserOperationError(f"User with username {username} does not exist")
+        user.balance = new_balance
+        session.commit()
+        return f"Updated balance for user {username} to ${new_balance:.2f}"
+    except Exception as e:
+        raise UnsupportedUserOperationError(f"Failed to update user balance due to error: {str(e)}")
+    finally:
+        session.close() if session else None
 
 def create_user() -> str:
     try:
@@ -36,20 +55,37 @@ def create_user() -> str:
         firstname = user_inputs["firstname"]
         lastname = user_inputs["lastname"]
         balance = float(user_inputs["balance"])
+
+        session = database.get_session()
+        session.add(User(username=username, password=password, firstname=firstname, lastname=lastname, balance=balance))
+        session.commit()
+        return f"User {username} created successfully"
     except ValueError:
         raise UnsupportedUserOperationError("Invalid input. Please try again.")
-    db.create_new_user(User(username, password, firstname, lastname, balance))
-    return f"User {username} created successfully"
+    except Exception as e:
+        raise UnsupportedUserOperationError(f"Failed to create user due to error: {str(e)}")
+    finally:
+        session.close() if session else None
+    
 
 def delete_user() -> str:
-    username = collect_inputs({"Username of user to delete": "username"})["username"]
-    if username == "admin":
-        raise UnsupportedUserOperationError("Cannot delete admin user")
-    user = db.query_user(username)
-    if not user:
-        raise UnsupportedUserOperationError(f"User with username {username} does not exist")
-    user_portfolios = db.get_portfolios_by_username(username)
-    if len(user_portfolios) > 0:
-        raise UnsupportedUserOperationError(f"User with username {username} has existing portfolios. Please delete all portfolios before deleting the user")
-    db.delete_user(username)
-    return f"User {username} deleted successfully"
+    try:
+        username = collect_inputs({"Username of user to delete": "username"})["username"]
+        if username == "admin":
+            raise UnsupportedUserOperationError("Cannot delete admin user")
+        session = database.get_session()
+        user = session.query(User).filter_by(username=username).one_or_none()
+        if not user:
+            raise UnsupportedUserOperationError(f"User with username {username} does not exist")
+        session.delete(user)
+        session.commit()
+        return f"User {username} deleted successfully"
+    except UnsupportedUserOperationError as e:
+        raise e
+    except IntegrityError:
+        session.rollback()
+        raise UnsupportedUserOperationError(f"Cannot delete user {username} due to existing dependencies")
+    except Exception as e:
+        raise UnsupportedUserOperationError(f"Failed to delete user due to error: {str(e)}")
+    finally:
+        session.close() if session else None
