@@ -1,12 +1,12 @@
 from typing import Tuple
 from cli.input_collector import collect_inputs
-import db
+from domain.User import User
+from database import get_session
+from session_state import set_logged_in_user, reset_logged_in_user
 
-class LoginError(Exception):
-    def __init__(self, message: str):
-        super().__init__(message)
+class LoginError(Exception): pass
 
-def get_login_inputs() -> Tuple[str, str]:
+def _get_login_inputs() -> Tuple[str, str]:
     user_inputs = collect_inputs({
         "Username": "username",
         "Password": "password"
@@ -16,11 +16,19 @@ def get_login_inputs() -> Tuple[str, str]:
     return username, password
 
 def login():
-    username, password = get_login_inputs()
-    user = db.query_user(username)
-    if not user or user.password != password:
-        raise LoginError("Login Failed: Invalid username or password")
-    db.set_logged_in_user(user)
+    username, password = _get_login_inputs()
+    try:
+        session = get_session()
+        user = session.query(User).filter(User.username == username).first()
+        if not user or str(user.password) != password:
+            raise LoginError("Login Failed: Invalid username or password")
+        set_logged_in_user(user)
+    except Exception as e:
+        session.rollback() if session else None
+        raise LoginError(f"Login Failed: {str(e)}")
+    finally:
+        session.close() if session else None
+
 
 def logout():
-    db.reset_logged_in_user()
+    reset_logged_in_user()
