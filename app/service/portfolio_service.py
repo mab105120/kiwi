@@ -1,18 +1,17 @@
 from typing import List
 from rich.table import Table
 from sqlalchemy.orm import selectinload
-
-from session_state import get_logged_in_user
-from cli.input_collector import collect_inputs
-from domain import Portfolio, Investment
-from database import get_session
-from service.user_service import update_user_balance
+from app.session_state import get_logged_in_user
+import app.cli.input_collector as collector
+from app.domain import Portfolio, Investment
+import app.database as db
+from app.service.user_service import update_user_balance
 
 class UnsupportedPortfolioOperationError(Exception): pass
 class PortfolioOperationError(Exception): pass
 
 def create_portfolio() -> str:
-    user_inputs = collect_inputs({
+    user_inputs = collector.collect_inputs({
         "Portfolio name": "name",
         "Portfolio description": "description" 
     })
@@ -21,9 +20,13 @@ def create_portfolio() -> str:
     user = get_logged_in_user()
     if not user:
         raise Exception("Unexpected state encountered when creating portfolio. No user logged in")
+    return _create_portfolio(name, description, user)
+
+def _create_portfolio(name, description, user) -> str:
+    session = None
     portfolio = Portfolio(name=name, description=description, user=user)
     try:
-        session = get_session()
+        session = db.get_session()
         session.add(portfolio)
         session.commit()
         return f"Created new portfolio {name}"
@@ -34,8 +37,9 @@ def create_portfolio() -> str:
         session.close() if session else None
 
 def get_all_portfolios() -> List[Portfolio]:
+    session = None
     try:
-        session = get_session()
+        session = db.get_session()
         portfolios = session.query(Portfolio).options(selectinload(Portfolio.investments).selectinload(Investment.security)).all()
         return portfolios
     except Exception as e:
@@ -57,9 +61,10 @@ def build_portfolios_table(portfolios: List[Portfolio]) -> Table|str:
     return table
 
 def build_portfolio_investments_table() -> Table:
+    session = None
     try:
-        session = get_session()
-        portfolio_id = int(collect_inputs({"Portfolio ID to view investments": "portfolio_id"})["portfolio_id"])
+        session = db.get_session()
+        portfolio_id = int(collector.collect_inputs({"Portfolio ID to view investments": "portfolio_id"})["portfolio_id"])
         portfolio = session.query(Portfolio).filter_by(id=portfolio_id).one_or_none()
         
         if not portfolio:
@@ -89,15 +94,12 @@ def build_portfolio_investments_table() -> Table:
 def delete_portfolio() -> str:
     session = None
     try:
-        portfolio_id = int(collect_inputs({"Portfolio ID to delete": "portfolio_id"})["portfolio_id"])
-        session = get_session()
+        portfolio_id = int(collector.collect_inputs({"Portfolio ID to delete": "portfolio_id"})["portfolio_id"])
+        session = db.get_session()
         portfolio = session.query(Portfolio).filter_by(id=portfolio_id).one_or_none()
 
         if not portfolio:
             raise UnsupportedPortfolioOperationError(f"Portfolio with id {portfolio_id} does not exist")
-        if len(portfolio.investments) > 0:
-            raise UnsupportedPortfolioOperationError(f"Portfolio with id {portfolio_id} is not empty. Please liquidate investments before deleting the portfolio")
-        
         session.delete(portfolio)
         session.commit()
         return f"Deleted portfolio with id {portfolio_id}"
@@ -112,14 +114,14 @@ def delete_portfolio() -> str:
 
 def add_investment_to_portfolio(portfolio: Portfolio, investment: Investment):
     for existing_investment in portfolio.investments:
-        if existing_investment.security.ticker == investment.ticker:
+        if existing_investment.ticker == investment.ticker:
             existing_investment.quantity += investment.quantity
             return
     portfolio.investments.append(investment)
 
 def liquidate_investment() -> str:
     try:
-        user_inputs = collect_inputs({
+        user_inputs = collector.collect_inputs({
             "Portfolio ID": "portfolio_id",
             "Ticker": "ticker",
             "Quantity": "quantity",
@@ -130,7 +132,7 @@ def liquidate_investment() -> str:
         quantity = int(user_inputs["quantity"])
         sale_price = float(user_inputs["sale_price"])
 
-        session = get_session()
+        session = db.get_session()
         portfolio = session.query(Portfolio).filter_by(id=portfolio_id).one_or_none()
 
         if not portfolio:

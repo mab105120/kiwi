@@ -5,17 +5,15 @@ from typing import Dict
 from rich.console import Console
 from rich.table import Table
 # internal dependencies
-from session_state import get_logged_in_user
-from cli import constants
-from domain.MenuFunctions import MenuFunctions
-from service.login_service import login, logout
-from service.user_service import get_all_users, create_user, delete_user, build_users_table
-from service.security_service import get_all_securities, build_securities_table, place_purchase_order
-from service.portfolio_service import get_all_portfolios, build_portfolios_table, create_portfolio, delete_portfolio, build_portfolio_investments_table, liquidate_investment
+from app.session_state import get_logged_in_user
+from app.cli import constants
+from app.domain.MenuFunctions import MenuFunctions
+from app.service.login_service import login, logout
+from app.service.user_service import get_all_users, create_user, delete_user, build_users_table
+from app.service.security_service import get_all_securities, build_securities_table, place_purchase_order
+from app.service.portfolio_service import get_all_portfolios, build_portfolios_table, create_portfolio, delete_portfolio, build_portfolio_investments_table, liquidate_investment
 
-class UnsupportedMenuError(Exception):
-    def __init__(self, message: str):
-        super().__init__(message)
+class UnsupportedMenuError(Exception): pass
 
 _console = Console()
 _menus: Dict[int, str] = {

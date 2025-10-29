@@ -1,17 +1,18 @@
 from typing import List
 from rich.table import Table
-from domain import Security, Portfolio, Investment
-from cli.input_collector import collect_inputs
-from service.portfolio_service import add_investment_to_portfolio
-from database import get_session
-from session_state import get_logged_in_user
+from app.domain import Security, Portfolio, Investment
+import app.cli.input_collector as collector
+from app.service.portfolio_service import add_investment_to_portfolio
+import app.database as db
+from app.session_state import get_logged_in_user
 
 class SecurityException(Exception): pass
 class InsufficientFundsError(Exception): pass
 
 def get_all_securities() -> List[Security]:
+    session = None
     try:
-        session = get_session()
+        session = db.get_session()
         securities = session.query(Security).all()
         return securities
     except Exception as e:
@@ -29,7 +30,7 @@ def build_securities_table(securities: List[Security]) -> Table:
     return table
 
 def place_purchase_order() -> str: 
-    user_inputs = collect_inputs({
+    user_inputs = collector.collect_inputs({
         "Portfolio ID": "portfolio_id",
         "Ticker": "ticker",
         "Quantity": "quantity"
@@ -46,11 +47,12 @@ def _execute_purchase_order(portfolio_id: int, ticker: str, quantity: int) -> st
     ''' Executes a purchase order for a given portfolio, ticker, and quantity.
         Raises SecurityException or InsufficientFundsError on failure.
     '''
+    session = None
     try:
         logged_in_user = get_logged_in_user()
         if not logged_in_user:
             raise SecurityException("No user is currently logged in.")
-        session = get_session()
+        session = db.get_session()
         portfolio = session.query(Portfolio).filter_by(id=portfolio_id).one_or_none()
         if not portfolio:
             raise SecurityException(f"Portfolio with id {portfolio_id} does not exist.")

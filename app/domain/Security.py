@@ -1,8 +1,8 @@
 from __future__ import annotations
-from database import Base
 from typing import List, TYPE_CHECKING
 from sqlalchemy import String, Float
 from sqlalchemy.orm import relationship, Mapped, mapped_column
+from app.database import Base
 
 if TYPE_CHECKING:
     from domain import Investment
