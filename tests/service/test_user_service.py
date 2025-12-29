@@ -23,9 +23,11 @@ def test_build_users_table(db_session):
     assert table.columns[0]._cells[0] == 'admin'
 
 def test_create_user(db_session):
+    users_before = get_all_users()
+    initial_count = len(users_before)
     _create_user('test_user75', 'xxx', 'Test', 'User', 100.00)
-    users = get_all_users()
-    assert len(users) == 2
+    users_after = get_all_users()
+    assert len(users_after) == initial_count + 1
 
 def test_create_user_db_exception(db_session, monkeypatch):
     def raise_exception(_):
