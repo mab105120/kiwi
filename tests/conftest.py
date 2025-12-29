@@ -5,21 +5,20 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 from typing import Generator
 import pytest
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
+import app.database as db
 from app.database import Base
 from app.domain import User, Security
 
-import app.cli.menu_printer
 
 @pytest.fixture(scope="session")
 def engine():
-    ''''
+    """
     create an in-memory database that is available for use in the entire test session.
     initialize the database with tables.
-    '''
-    
+    """
     eng = create_engine(
         "sqlite+pysqlite:///:memory:",
         future = True,
@@ -52,7 +51,6 @@ def db_session(connection, monkeypatch) -> Generator[Session]:
     session = TestingSessionLocal()
     _populate_database(session)
 
-    import app.database as db
     monkeypatch.setattr(db, 'get_session', lambda: session, raising=True)
 
     try:
@@ -78,7 +76,7 @@ def _populate_database(session):
             Security(ticker="MSFT", issuer="Microsoft Corp.", price=300.00)
         ]
         session.add_all(securities)
-    except:
+    except Exception:
         session.rollback()
     finally:
         session.commit()

@@ -1,4 +1,3 @@
-from typing import Tuple
 import app.cli.input_collector as collector
 from app.domain.User import User
 import app.database as db
@@ -16,6 +15,7 @@ def login():
     _login(username, password)
 
 def _login(username, password):
+    session = None
     try:
         session = db.get_session()
         user = session.query(User).filter(User.username == username).first()

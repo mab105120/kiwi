@@ -1,6 +1,6 @@
-from rich.table import Table, Row
+from rich.table import Table
 
-from app.domain import Security, User, Portfolio
+from app.domain import User, Portfolio
 from app.service.portfolio_service import _create_portfolio
 from app.service.security_service import InsufficientFundsError, get_all_securities, place_purchase_order, SecurityException, _execute_purchase_order, build_securities_table
 from app.service.user_service import _create_user

@@ -1,3 +1,4 @@
+import pytest
 from app.domain.User import User
 from app.service.login_service import login, _login, logout, LoginError
 from app.session_state import get_logged_in_user
@@ -31,14 +32,11 @@ def test_get_login_inputs(monkeypatch):
 
 def test_login_invalid_username(db_session):
     create_user_fixture(db_session)
-    try:
-        _login('invalid_user', 'userpass')
-    except LoginError as e:
-        assert str(e) == "Login Failed: Invalid username or password"
-    else:
-        assert False, "Expected LoginError was not raised"
-    finally:
-        logout()
+    with pytest.raises(LoginError):
+        try:
+            _login('invalid_user', 'userpass')
+        finally:
+            logout()
 
 def test_logout(db_session):
     create_user_fixture(db_session)

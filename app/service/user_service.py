@@ -29,6 +29,7 @@ def build_users_table(users: List[User]) -> Table:
     return table
 
 def update_user_balance(username: str, new_balance: float) -> str:
+    session = None
     try:
         session = db.get_session()
         user = session.query(User).filter_by(username=username).one_or_none()
@@ -62,6 +63,7 @@ def create_user() -> str:
         raise UnsupportedUserOperationError("Invalid input. Please try again.")
 
 def _create_user(username: str, password: str, firstname: str, lastname: str, balance: float) -> str:
+    session = None
     try:
         session = db.get_session()
         session.add(User(username=username, password=password, firstname=firstname, lastname=lastname, balance=balance))
@@ -80,6 +82,7 @@ def delete_user() -> str:
 def _delete_user(username) -> str:
     if username == "admin":
         raise UnsupportedUserOperationError("Cannot delete admin user")
+    session = None
     try:
         session = db.get_session()
         user = session.query(User).filter_by(username=username).one_or_none()
@@ -88,11 +91,11 @@ def _delete_user(username) -> str:
         session.delete(user)
         session.commit()
         return f"User {username} deleted successfully"
-    except UnsupportedUserOperationError as e:
-        raise e
     except IntegrityError:
         session.rollback() if session else None
         raise UnsupportedUserOperationError(f"Cannot delete user {username} due to existing dependencies")
+    except UnsupportedUserOperationError as e:
+        raise e
     except Exception as e:
         raise UnsupportedUserOperationError(f"Failed to delete user due to error: {str(e)}")
     finally:

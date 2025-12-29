@@ -158,9 +158,9 @@ def test_liquidate_investment(db_session, monkeypatch):
     monkeypatch.setattr("app.session_state.get_logged_in_user", lambda: user)
     portfolio = Portfolio(name="Investment Portfolio", description="Portfolio for liquidation test", user=user)
     db_session.add(portfolio)
-    appl_security = db_session.query(Security).filter_by(ticker="AAPL").one_or_none()
-    assert appl_security is not None
-    investment = Investment(ticker="AAPL", quantity=20, security=appl_security)
+    aapl_security = db_session.query(Security).filter_by(ticker="AAPL").one_or_none()
+    assert aapl_security is not None
+    investment = Investment(ticker="AAPL", quantity=20, security=aapl_security)
     add_investment_to_portfolio(portfolio, investment)
     db_session.commit()
     monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {
