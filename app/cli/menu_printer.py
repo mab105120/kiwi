@@ -79,7 +79,6 @@ def handle_user_selection(menu_id: int, user_selection: int):
         print_menu(menu_id)
 
 def print_menu(menu_id: int):
-    user_selection = -1
     try:
         _console.print(_menus[menu_id])
         user_selection = int(_console.input(">> "))
@@ -89,4 +88,5 @@ def print_menu(menu_id: int):
     except KeyError:
         print_error("Invalid menu selection. Please try again.")
         print_menu(menu_id)
-    handle_user_selection(menu_id, user_selection)
+    else:
+        handle_user_selection(menu_id, user_selection)

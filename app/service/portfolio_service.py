@@ -3,7 +3,7 @@ from rich.table import Table
 from sqlalchemy.orm import selectinload
 import app.session_state as session_state
 import app.cli.input_collector as collector
-from app.domain import Portfolio, Investment
+from app.domain import Portfolio, Investment, User
 import app.database as db
 from app.service.user_service import update_user_balance
 
@@ -22,7 +22,7 @@ def create_portfolio() -> str:
         raise Exception("Unexpected state encountered when creating portfolio. No user logged in")
     return _create_portfolio(name, description, user)
 
-def _create_portfolio(name, description, user) -> str:
+def _create_portfolio(name: str, description: str, user: User) -> str:
     session = None
     portfolio = Portfolio(name=name, description=description, user=user)
     try:

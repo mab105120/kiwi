@@ -130,8 +130,6 @@ def test_delete_user_with_dependencies_raises(db_session):
         assert False, "Expected UnsupportedUserOperationError was not raised"
 
 def test_update_user_balance(db_session):
-    user = db_session.query(User).filter_by(username='admin').one()
-
     update_user_balance('admin', 500.00)
     user = db_session.query(User).filter_by(username='admin').one()
     assert user.balance == 500.00
