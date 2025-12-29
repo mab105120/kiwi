@@ -1,5 +1,5 @@
 import pytest
-from app.domain.User import User
+from app.domain import User
 from app.service.login_service import login, _login, logout, LoginError
 from app.session_state import get_logged_in_user
 
