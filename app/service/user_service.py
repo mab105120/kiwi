@@ -79,7 +79,7 @@ def delete_user() -> str:
 
 def _delete_user(username) -> str:
     if username == "admin":
-            raise UnsupportedUserOperationError("Cannot delete admin user")
+        raise UnsupportedUserOperationError("Cannot delete admin user")
     try:
         session = db.get_session()
         user = session.query(User).filter_by(username=username).one_or_none()
