@@ -1,7 +1,7 @@
 from typing import List
 from rich.table import Table
 from sqlalchemy.orm import selectinload
-from app.session_state import get_logged_in_user
+import app.session_state as session_state
 import app.cli.input_collector as collector
 from app.domain import Portfolio, Investment
 import app.database as db
@@ -17,7 +17,7 @@ def create_portfolio() -> str:
     })
     name = user_inputs["name"]
     description = user_inputs["description"]
-    user = get_logged_in_user()
+    user = session_state.get_logged_in_user()
     if not user:
         raise Exception("Unexpected state encountered when creating portfolio. No user logged in")
     return _create_portfolio(name, description, user)
@@ -120,6 +120,7 @@ def add_investment_to_portfolio(portfolio: Portfolio, investment: Investment):
     portfolio.investments.append(investment)
 
 def liquidate_investment() -> str:
+    session = None
     try:
         user_inputs = collector.collect_inputs({
             "Portfolio ID": "portfolio_id",
@@ -143,7 +144,7 @@ def liquidate_investment() -> str:
         if investment.quantity < quantity:
             raise UnsupportedPortfolioOperationError(f"Cannot liquidate {quantity} shares of {ticker}. Only {investment.quantity} shares available in portfolio")
         total_proceeds = sale_price * quantity
-        logged_in_user = get_logged_in_user()
+        logged_in_user = session_state.get_logged_in_user()
         if not logged_in_user:
             raise Exception("Unexpected state encountered when liquidating investment. No user logged in")
         update_user_balance(logged_in_user.username, logged_in_user.balance + total_proceeds)

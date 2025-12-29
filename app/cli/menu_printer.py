@@ -79,9 +79,10 @@ def handle_user_selection(menu_id: int, user_selection: int):
         print_menu(menu_id)
 
 def print_menu(menu_id: int):
+    user_selection = -1
     try:
         _console.print(_menus[menu_id])
-        user_selection = int(_console.input(">> ")) # TODO: check if the user input is valid
+        user_selection = int(_console.input(">> "))
     except ValueError:
         print_error("Invalid input. Please try again.")
         print_menu(menu_id)

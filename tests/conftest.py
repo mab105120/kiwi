@@ -78,5 +78,7 @@ def _populate_database(session):
             Security(ticker="MSFT", issuer="Microsoft Corp.", price=300.00)
         ]
         session.add_all(securities)
+    except:
+        session.rollback()
     finally:
         session.commit()
