@@ -1,4 +1,4 @@
-from domain import User
+from app.domain import User
 
 _logged_in_user: User|None = None
 

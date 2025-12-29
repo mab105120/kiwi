@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
-from database import Base
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, mapped_column, Mapped
+from app.database import Base
 
 if TYPE_CHECKING:
     from domain.Investment import Investment
