@@ -24,8 +24,8 @@ def test_execute_purchase_order(db_session):
     assert portfolio is not None
     try:
         set_logged_in_user(user)
-        oder_confirmation = _execute_purchase_order(portfolio.id, "AAPL", 2)
-        assert "Purchased 2 shares of AAPL" in oder_confirmation
+        order_confirmation = _execute_purchase_order(portfolio.id, "AAPL", 2)
+        assert "Purchased 2 shares of AAPL" in order_confirmation
         assert user.balance == 700.00
         user = db_session.query(User).filter_by(username="user").one()
         user_portfolio = user.portfolios[0]
