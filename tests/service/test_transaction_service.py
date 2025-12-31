@@ -52,7 +52,6 @@ def test_get_transactions_by_portfolio(setup, db_session):
     assert all(tx.portfolio_id == portfolio.id for tx in transactions)
 
 def test_get_transactions_by_ticker(setup, db_session):
-    portfolio = setup['portfolio']
     transactions = transaction_service.get_transactions_by_ticker('AAPL')
     assert len(transactions) == 1
     assert transactions[0].ticker == 'AAPL'

@@ -74,7 +74,7 @@ def test_delete_user(db_session, monkeypatch):
     assert result == f"User {username} deleted successfully"
 
 def test_create_portfolio(db_session, monkeypatch):
-    user = User(username='testuser',password='testpass',firstname='Test',lastname='User',balance=5000.00            )
+    user = User(username='testuser',password='testpass',firstname='Test',lastname='User',balance=5000.00)
     try:
         db_session.add(user)
         db_session.commit()

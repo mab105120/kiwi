@@ -1,7 +1,6 @@
 import datetime
 from typing import List
 from app.models import Security, Portfolio, Investment, Transaction
-from app.service import transaction_service
 import app.database as db
 
 class SecurityException(Exception): pass
@@ -38,7 +37,7 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
         portfolio = session.query(Portfolio).filter_by(id=portfolio_id).one_or_none()
         if not portfolio:
             raise SecurityException(f"Portfolio with id {portfolio_id} does not exist.")
-        user = portfolio.user if portfolio else None
+        user = portfolio.user
         if not user:
             raise SecurityException(f"User associated with the portfolio ({portfolio_id}) does not exist.")
         

@@ -89,11 +89,12 @@ def test_update_nonexistent_user_balance_raises(db_session):
     with pytest.raises(user_service.UnsupportedUserOperationError) as e:
         user_service.update_user_balance('nonexistent_user', 300.00)
     assert "User with username nonexistent_user does not exist" in str(e.value)
-    def test_get_user_by_username(db_session):
-        user = user_service.get_user_by_username('admin')
-        assert user is not None
-        assert user.username == 'admin'
-        assert user.firstname == 'Admin'
+
+def test_get_user_by_username(db_session):
+    user = user_service.get_user_by_username('admin')
+    assert user is not None
+    assert user.username == 'admin'
+    assert user.firstname == 'Admin'
 
 def test_get_user_by_username_nonexistent(db_session):
     user = user_service.get_user_by_username('nonexistent_user')

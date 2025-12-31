@@ -1,6 +1,5 @@
 from typing import List
-import datetime
-from app.models import Transaction, Portfolio, Security
+from app.models import Transaction
 import app.database as db
 
 def get_transactions_by_user(username: str) -> List[Transaction]:
