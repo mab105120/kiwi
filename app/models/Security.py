@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.database import Base
 
 if TYPE_CHECKING:
-    from domain import Investment
+    from app.models import Investment, Transaction
 
 class Security(Base):
     __tablename__ = 'security'
@@ -17,6 +17,11 @@ class Security(Base):
         "Investment",
         back_populates="security",
         lazy="selectin")
+
+    transactions: Mapped[List["Transaction"]] = relationship(
+    "Transaction",
+    back_populates="security",
+    lazy="selectin")
 
     def __str__(self):
         return f"<Security: ticker={self.ticker}; issuer={self.issuer}; price={self.price}; #investments={len(self.investments)}>"

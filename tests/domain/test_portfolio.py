@@ -1,4 +1,4 @@
-from app.domain import Portfolio, Investment, Security
+from app.models import Portfolio, Investment, Security
 
 def test_get_portfolio_value():
     p = Portfolio(name="Test Portfolio", description="A test portfolio", owner="test_user")

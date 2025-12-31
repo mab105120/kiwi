@@ -5,8 +5,8 @@ from sqlalchemy.orm import relationship, mapped_column, Mapped
 from app.database import Base
 
 if TYPE_CHECKING:
-    from domain.Portfolio import Portfolio
-    from domain.Security import Security
+    from models.Portfolio import Portfolio
+    from models.Security import Security
 
 class Investment(Base):
     __tablename__ = 'investment'

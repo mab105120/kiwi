@@ -1,49 +1,33 @@
 import pytest
-from app.service.portfolio_service import _create_portfolio, add_investment_to_portfolio, build_portfolio_investments_table, build_portfolios_table, create_portfolio, delete_portfolio, get_all_portfolios, liquidate_investment, UnsupportedPortfolioOperationError
-from app.session_state import reset_logged_in_user, set_logged_in_user
-from app.domain import Investment, Portfolio, User, Security
+import app.service.portfolio_service as portfolio_service
+from app.models import Investment, Portfolio, User, Security
 
-def test_create_portfolio_input(db_session, monkeypatch):
-    set_logged_in_user(User(username="testuser", balance=1000.0))
-    monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {"name": "Test Portfolio", "description": "A test portfolio"})
-    monkeypatch.setattr("app.service.portfolio_service._create_portfolio", lambda name, description, user: f"Created new portfolio {name}")
-    result = create_portfolio()
-    assert result == "Created new portfolio Test Portfolio"
-    reset_logged_in_user()
-    try:
-        create_portfolio()
-    except Exception as e:
-        assert str(e) == "Unexpected state encountered when creating portfolio. No user logged in"
-
-def test_create_portfolio(db_session):
-    user = User(username="testuser", password="testpass", firstname="Test", lastname="User", balance=1000.0)
-    db_session.add(user)
-    db_session.commit()
-    result = _create_portfolio("My Portfolio", "This is my portfolio", user)
-    assert "Created new portfolio My Portfolio" in result
-    portfolios = db_session.query(Portfolio).filter_by(name="My Portfolio").all()
-    assert len(portfolios) == 1
-    assert portfolios[0].description == "This is my portfolio"
-    assert portfolios[0].user.username == "testuser"
-
-def test_create_portfolio_db_failure(monkeypatch):
-    def failing_get_session():
-        raise Exception("Database connection error")
-    monkeypatch.setattr("app.database.get_session", failing_get_session)
-    try:
-        _create_portfolio("Fail Portfolio", "This should fail", None)
-    except Exception as e:
-        assert "Failed to create portfolio due to error: Database connection error" in str(e)
-
-def test_get_all_portfolios(db_session):
+@pytest.fixture(autouse=True)
+def setup(db_session):
     user = User(username="testuser", password="testpass", firstname="Test", lastname="User", balance=1000.0)
     db_session.add(user)
     db_session.commit()
     portfolio1 = Portfolio(name="Portfolio 1", description="First portfolio", user=user)
     portfolio2 = Portfolio(name="Portfolio 2", description="Second portfolio", user=user)
     db_session.add_all([portfolio1, portfolio2])
+    portfolio1.investments.append(Investment(ticker="AAPL", quantity=10))
     db_session.commit()
-    portfolios = get_all_portfolios()
+    return {
+        "user": user,
+        "portfolio1": portfolio1,
+        "portfolio2": portfolio2
+    }
+
+def test_get_portfolios_by_user_db_failure(db_session, monkeypatch):
+    def failing_get_session(_):
+        raise Exception("Database query error")
+    monkeypatch.setattr(db_session, 'query', failing_get_session)
+    with pytest.raises(Exception) as e:
+        portfolio_service.get_portfolios_by_user(User(username="testuser"))
+    assert "Failed to retrieve portfolios due to error: Database query error" in str(e.value)
+
+def test_get_all_portfolios(db_session):
+    portfolios = portfolio_service.get_all_portfolios()
     assert len(portfolios) >= 2
     names = [p.name for p in portfolios]
     assert "Portfolio 1" in names
@@ -53,156 +37,97 @@ def test_get_all_portfolios_db_failure(monkeypatch):
     def failing_get_session():
         raise Exception("Database connection error")
     monkeypatch.setattr("app.database.get_session", failing_get_session)
-    try:
-        get_all_portfolios()
-    except Exception as e:
-        assert "Failed to retrieve portfolios due to error: Database connection error" in str(e)
+    with pytest.raises(Exception) as e:
+        portfolio_service.get_all_portfolios()
+    assert "Failed to retrieve portfolios due to error: Database connection error" in str(e.value)
 
-def test_build_portfolios_table():
-    result = build_portfolios_table([])
-    assert result == "No portfolios exist. Add new portfolios"
-    table = build_portfolios_table([Portfolio(id=1, name="Portfolio 1", description="Desc 1"),
-                                     Portfolio(id=2, name="Portfolio 2", description="Desc 2")])
-    assert table is not None
-    assert table.title == "Portfolios"
-    assert type(table) != str
+def test_get_porfolio_by_id(setup, db_session):
+    portfolio = setup["portfolio1"]
+    retrieved_portfolio = portfolio_service.get_portfolio_by_id(portfolio.id)
+    assert retrieved_portfolio is not None
+    assert retrieved_portfolio.name == "Portfolio 1"
+    assert retrieved_portfolio.description == "First portfolio"
 
-def test_build_portfolio_investments_table(db_session, monkeypatch):
-    user = User(username="testuser", password="testpass", firstname="Test", lastname="User", balance=100000.0)
-    db_session.add(user)
-    db_session.commit()
-    portfolio = Portfolio(name="Portfolio 1", description="Desc 1", user=user)
-    db_session.add(portfolio)
-    add_investment_to_portfolio(portfolio, Investment(ticker="AAPL", quantity=10))
-    db_session.commit()
-    monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {"portfolio_id": str(portfolio.id)})
-    table = build_portfolio_investments_table()
-    assert table is not None
-    assert table.title == f"Investments in Portfolio {portfolio.name} (ID: {portfolio.id})"
+def test_get_porfolio_by_id_db_failure(db_session, monkeypatch):
+    def failing_get_session(_):
+        raise Exception("Database connection error")
+    monkeypatch.setattr(db_session, "query", failing_get_session)
+    with pytest.raises(Exception) as e:
+        portfolio_service.get_portfolio_by_id(1)
+    assert "Failed to retrieve portfolio due to error: Database connection error" in str(e.value)
 
-def test_build_portfolio_invalid_portfolio_id(db_session, monkeypatch):
-    monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {"portfolio_id": "9999"})
-    try:
-        build_portfolio_investments_table()
-    except Exception as e:
-        assert "Portfolio with id 9999 does not exist" in str(e)
+def test_get_porfolio_by_invalid_id(db_session):
+    invalid_id = 9999
+    assert portfolio_service.get_portfolio_by_id(invalid_id) is None
 
-def test_build_portfolio_table_with_no_investments(db_session, monkeypatch):
-    user = User(username="testuser", password="testpass", firstname="Test", lastname="User", balance=100000.0)
-    db_session.add(user)
-    db_session.commit()
-    portfolio = Portfolio(name="Empty Portfolio", description="No investments here", user=user)
-    db_session.add(portfolio)
-    db_session.commit()
-    monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {"portfolio_id": str(portfolio.id)})
-    try:
-        build_portfolio_investments_table()
-    except Exception as e:
-        assert "No investments exist in portfolio" in str(e)
+def test_create_portfolio(setup, db_session):
+    user = setup["user"]
+    user_portfolios_before = portfolio_service.get_portfolios_by_user(user)
+    assert len(user_portfolios_before) == 2
+    portfolio_service.create_portfolio("Test Portfolio", "A test portfolio", user)
+    user_portfolios_after = portfolio_service.get_portfolios_by_user(user)
+    assert len(user_portfolios_after) == 3
+    assert user_portfolios_after[-1].name == "Test Portfolio"
+    assert user_portfolios_after[-1].description == "A test portfolio"
 
-def test_build_portfolio_with_invalid_input(monkeypatch):
-    monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {"portfolio_id": "invalid"})
-    try:
-        build_portfolio_investments_table()
-    except Exception as e:
-        assert "Invalid input. Please try again." in str(e)
+def test_create_portfolio_invalid_input():
+    user = User(username="testuser", password="testpass", firstname="Test", lastname="User", balance=1000.0)
+    with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError):
+        portfolio_service.create_portfolio("", "A test portfolio", user)
+    with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError):
+        portfolio_service.create_portfolio("Test Portfolio", "", user)
 
-def test_delete_portfolio(db_session, monkeypatch):
-    user = User(username="testuser", password="testpass", firstname="Test", lastname="User", balance=100000.0)
-    db_session.add(user)
-    db_session.commit()
+def test_create_portfolio_db_failure(monkeypatch):
+    def failing_get_session():
+        raise Exception("Database connection error")
+    monkeypatch.setattr("app.database.get_session", failing_get_session)
+    with pytest.raises(Exception) as e:
+        portfolio_service.create_portfolio("Fail Portfolio", "This should fail", User())
+    assert "Failed to create portfolio due to error: Database connection error" in str(e.value)
+        
+def test_delete_portfolio(setup, db_session):
+    user = setup["user"]
     portfolio = Portfolio(name="To Be Deleted", description="This portfolio will be deleted", user=user)
     db_session.add(portfolio)
     db_session.commit()
-    monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {"portfolio_id": str(portfolio.id)})
-    result = delete_portfolio()
-    assert f"Deleted portfolio with id {portfolio.id}" in result
+    portfolio_service.delete_portfolio(portfolio.id)
     deleted_portfolio = db_session.query(Portfolio).filter_by(id=portfolio.id).one_or_none()
     assert deleted_portfolio is None
 
-def test_delete_portfolio_invalid_id(db_session, monkeypatch):
-    monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {"portfolio_id": "9999"})
-    try:
-        delete_portfolio()
-    except Exception as e:
-        assert "Portfolio with id 9999 does not exist" in str(e)
+def test_delete_portfolio_invalid_id(db_session):
+    with pytest.raises(Exception):
+        portfolio_service.delete_portfolio(9999)
 
-def test_delete_portfolio_invalid_input(monkeypatch):
-    monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {"portfolio_id": "invalid"})
-    try:
-        delete_portfolio()
-    except Exception as e:
-        assert "Invalid input. Please try again." in str(e)
-
-def test_add_investment_to_portfolio():
-    portfolio = Portfolio(name="Test Portfolio", description="Testing investments")
-    investment1 = Investment(ticker="AAPL", quantity=10)
-    investment2 = Investment(ticker="AAPL", quantity=5)
-    investment3 = Investment(ticker="GOOGL", quantity=8)
-    add_investment_to_portfolio(portfolio, investment1)
-    assert len(portfolio.investments) == 1
-    assert portfolio.investments[0].quantity == 10
-    add_investment_to_portfolio(portfolio, investment2)
-    assert len(portfolio.investments) == 1
-    assert portfolio.investments[0].quantity == 15
-    add_investment_to_portfolio(portfolio, investment3)
-    assert len(portfolio.investments) == 2
-    quantities = {inv.ticker: inv.quantity for inv in portfolio.investments}
-    assert quantities["AAPL"] == 15
-    assert quantities["GOOGL"] == 8
-
-def test_liquidate_investment(db_session, monkeypatch):
-    user = User(username="testuser", password="testpass", firstname="Test", lastname="User", balance=100000.0)
-    db_session.add(user)
-    db_session.commit()
-    monkeypatch.setattr("app.session_state.get_logged_in_user", lambda: user)
-    portfolio = Portfolio(name="Investment Portfolio", description="Portfolio for liquidation test", user=user)
-    db_session.add(portfolio)
-    aapl_security = db_session.query(Security).filter_by(ticker="AAPL").one_or_none()
-    assert aapl_security is not None
-    investment = Investment(ticker="AAPL", quantity=20, security=aapl_security)
-    add_investment_to_portfolio(portfolio, investment)
-    db_session.commit()
-    monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {
-        "portfolio_id": str(portfolio.id),
-        "ticker": "AAPL",
-        "quantity": "5",
-        "sale_price": "150.0"
-    })
-    result = liquidate_investment()
-    assert "Liquidated 5 shares of AAPL from portfolio with id" in result
+def test_liquidate_investment(setup, db_session):
+    portfolio = setup["portfolio1"]
+    portfolio_service.liquidate_investment(portfolio.id, "AAPL", 5, 150.0)
+    portfolio = db_session.query(Portfolio).filter_by(id=portfolio.id).one()
     updated_investment = next((inv for inv in portfolio.investments if inv.ticker == "AAPL"), None)
     assert updated_investment is not None
-    assert updated_investment.quantity == 15
-    updated_user = db_session.query(User).filter_by(username="testuser").one()
-    assert updated_user.balance == 100000.0 + (5 * 150.0)
+    assert updated_investment.quantity == 5
+    user = db_session.query(User).filter_by(username="testuser").one()
+    assert user.balance == 1000.0 + (5 * 150.0)
 
-def test_liquidate_investment_invalid_portfolio(db_session, monkeypatch):
-    monkeypatch.setattr("app.session_state.get_logged_in_user", lambda: User(username="testuser", balance=100000.0))
-    monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {
-        "portfolio_id": "9999",
-        "ticker": "AAPL",
-        "quantity": "5",
-        "sale_price": "150.0"
-    })
-    try:
-        liquidate_investment()
-    except Exception as e:
-        assert "Portfolio with id 9999 does not exist" in str(e)
+def test_liquidate_entire_investment(setup, db_session):
+    portfolio = setup["portfolio1"]
+    portfolio_service.liquidate_investment(portfolio.id, "AAPL", 10, 150.0)
+    portfolio = db_session.query(Portfolio).filter_by(id=portfolio.id).one()
+    updated_investment = next((inv for inv in portfolio.investments if inv.ticker == "AAPL"), None)
+    assert updated_investment is None
+    user = db_session.query(User).filter_by(username="testuser").one()
+    assert user.balance == 1000.0 + (10 * 150.0)
 
-def test_liquidate_non_existing_investment(db_session, monkeypatch):
-    user = User(username="testuser", password="testpass", firstname="Test", lastname="User", balance=100000.0)
-    db_session.add(user)
-    db_session.commit()
-    portfolio = Portfolio(name="Empty Portfolio", description="No investments here", user=user)
-    db_session.add(portfolio)
-    db_session.commit()
-    monkeypatch.setattr("app.session_state.get_logged_in_user", lambda: user)
-    monkeypatch.setattr("app.cli.input_collector.collect_inputs", lambda _: {
-        "portfolio_id": str(portfolio.id),
-        "ticker": "AAPL",
-        "quantity": "5",
-        "sale_price": "150.0"
-    })
-    with pytest.raises(UnsupportedPortfolioOperationError):
-        liquidate_investment()
+def test_liquidate_investment_invalid_portfolio(db_session):
+    with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError):
+        portfolio_service.liquidate_investment(9999, "AAPL", 5, 150.0)
+
+def test_liquidate_non_existing_investment(setup, db_session):
+    portfolio = setup["portfolio1"]
+    with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError):
+        portfolio_service.liquidate_investment(portfolio.id, "MSFT", 5, 150.0)
+
+def test_liquidate_investment_insufficient_quantity(setup, db_session):
+    portfolio = setup["portfolio1"]
+    with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError) as e:
+        portfolio_service.liquidate_investment(portfolio.id, "AAPL", 1000, 150.0)
+    assert "Cannot liquidate 1000 shares of AAPL. Only 10 shares available in portfolio" in str(e.value)

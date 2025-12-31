@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 if TYPE_CHECKING:
-    from domain.Portfolio import Portfolio
+    from app.models import Portfolio, Transaction
 
 class User(Base):
     __tablename__ = 'user'
@@ -18,6 +18,10 @@ class User(Base):
 
     portfolios: Mapped[List["Portfolio"]] = relationship(
         "Portfolio",
+        back_populates="user",
+        lazy="selectin")
+    transactions: Mapped[List["Transaction"]] = relationship(
+        "Transaction",
         back_populates="user",
         lazy="selectin")
 

@@ -1,10 +1,7 @@
 from typing import List
-from rich.table import Table
-from app.domain import Security, Portfolio, Investment
-import app.cli.input_collector as collector
-from app.service.portfolio_service import add_investment_to_portfolio
+from app.models import Security, Portfolio, Investment
+from app.service import transaction_service
 import app.database as db
-from app.session_state import get_logged_in_user
 
 class SecurityException(Exception): pass
 class InsufficientFundsError(Exception): pass
@@ -20,59 +17,47 @@ def get_all_securities() -> List[Security]:
     finally:
         session.close() if session else None
 
-def build_securities_table(securities: List[Security]) -> Table:
-    table = Table(title="Securities")
-    table.add_column("Ticker", style="cyan")
-    table.add_column("Issuer")
-    table.add_column("Price", justify="right", style="green")
-    for security in securities:
-        table.add_row(security.ticker, security.issuer, f"${security.price:.2f}")
-    return table
-
-def place_purchase_order() -> str: 
-    user_inputs = collector.collect_inputs({
-        "Portfolio ID": "portfolio_id",
-        "Ticker": "ticker",
-        "Quantity": "quantity"
-    })
-    try:
-        portfolio_id = int(user_inputs["portfolio_id"])
-        ticker = user_inputs["ticker"]
-        quantity = int(user_inputs["quantity"])
-        return _execute_purchase_order(portfolio_id, ticker, quantity)
-    except ValueError:
-        raise SecurityException("Invalid input. Please try again.")
-
-def _execute_purchase_order(portfolio_id: int, ticker: str, quantity: int) -> str:
-    ''' Executes a purchase order for a given portfolio, ticker, and quantity.
-        Raises SecurityException or InsufficientFundsError on failure.
-    '''
+def get_security_by_ticker(ticker: str) -> Security | None:
     session = None
     try:
-        logged_in_user = get_logged_in_user()
-        if not logged_in_user:
-            raise SecurityException("No user is currently logged in.")
+        session = db.get_session()
+        security = session.query(Security).filter_by(ticker=ticker).one_or_none()
+        return security
+    except Exception as e:
+        raise SecurityException(f"Failed to retrieve security due to error: {str(e)}")
+    finally:
+        session.close() if session else None
+
+def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
+    session = None
+    try:
+        if not portfolio_id or not ticker or not quantity or quantity <= 0:
+            raise SecurityException(f"Invalid purchase order parameters [portfolio_id={portfolio_id}, ticker={ticker}, quantity={quantity}]")
         session = db.get_session()
         portfolio = session.query(Portfolio).filter_by(id=portfolio_id).one_or_none()
         if not portfolio:
             raise SecurityException(f"Portfolio with id {portfolio_id} does not exist.")
-        security = security = session.query(Security).filter_by(ticker=ticker).one_or_none()
+        user = portfolio.user if portfolio else None
+        if not user:
+            raise SecurityException(f"User associated with the portfolio ({portfolio_id}) does not exist.")
+        
+        security = session.query(Security).filter_by(ticker=ticker).one_or_none()
         if not security:
             raise SecurityException(f"Security with ticker {ticker} does not exist.")
         
         total_cost = security.price * quantity
-        if logged_in_user.balance < total_cost:
+        if user.balance < total_cost:
             raise InsufficientFundsError("Insufficient funds to complete the purchase.")
 
-        add_investment_to_portfolio(portfolio, Investment(ticker=ticker, quantity=quantity))
-        user = portfolio.user
-        user.balance = logged_in_user.balance - total_cost
-        logged_in_user.balance -= total_cost
+        existing_investment = next((inv for inv in portfolio.investments if inv.ticker == ticker), None)
+        if existing_investment:
+            existing_investment.quantity += quantity
+        else:
+            portfolio.investments.append(Investment(ticker=ticker, quantity=quantity, security=security))
+
+        user.balance -= total_cost
         session.commit()
-        return (
-            f"Purchased {quantity} shares of {ticker} for ${total_cost:.2f}. "
-            f"New balance: ${logged_in_user.balance:.2f}"
-        )
+        transaction_service.record_transaction(portfolio_id=portfolio.id, ticker=ticker, quantity=quantity, price=security.price, transaction_type="BUY")
     except InsufficientFundsError as e:
         session.rollback() if session else None
         raise e
