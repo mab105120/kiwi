@@ -1,6 +1,6 @@
 import pytest
 import app.service.portfolio_service as portfolio_service
-from app.models import Investment, Portfolio, User, Security
+from app.models import Investment, Portfolio, User
 
 @pytest.fixture(autouse=True)
 def setup(db_session):
@@ -41,14 +41,14 @@ def test_get_all_portfolios_db_failure(monkeypatch):
         portfolio_service.get_all_portfolios()
     assert "Failed to retrieve portfolios due to error: Database connection error" in str(e.value)
 
-def test_get_porfolio_by_id(setup, db_session):
+def test_get_portfolio_by_id(setup, db_session):
     portfolio = setup["portfolio1"]
     retrieved_portfolio = portfolio_service.get_portfolio_by_id(portfolio.id)
     assert retrieved_portfolio is not None
     assert retrieved_portfolio.name == "Portfolio 1"
     assert retrieved_portfolio.description == "First portfolio"
 
-def test_get_porfolio_by_id_db_failure(db_session, monkeypatch):
+def test_get_portfolio_by_id_db_failure(db_session, monkeypatch):
     def failing_get_session(_):
         raise Exception("Database connection error")
     monkeypatch.setattr(db_session, "query", failing_get_session)

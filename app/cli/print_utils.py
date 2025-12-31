@@ -15,7 +15,7 @@ def print_users_table(users: List[User]):
         table.add_row(user.username, user.firstname, user.lastname, f"${user.balance:.2f}")
     _console.print(table)
 
-def printer_transactions_table(transactions: List[Transaction]):
+def print_transactions_table(transactions: List[Transaction]):
     if len(transactions) == 0:
         _console.print("No transactions exist for this portfolio.")
         return
@@ -53,6 +53,7 @@ def print_portfolios_table(portfolios: List[Portfolio]):
 def print_portfolio_with_investments_table(portfolio: Portfolio):
     if len(portfolio.investments) == 0:
             _console.print(f"No investments exist in portfolio with id {portfolio.id}")
+            return
     table = Table(title=f"Investments in Portfolio {portfolio.name} (ID: {portfolio.id})")
     table.add_column("Ticker", style="cyan")
     table.add_column("Issuer")

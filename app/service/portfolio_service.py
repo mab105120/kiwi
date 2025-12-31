@@ -1,8 +1,7 @@
+import datetime
 from typing import List
-from app.models import Portfolio, Investment, User
+from app.models import Portfolio, Transaction, User
 import app.database as db
-from app.service.user_service import update_user_balance
-from app.service.transaction_service import record_transaction
 
 class UnsupportedPortfolioOperationError(Exception): pass
 class PortfolioOperationError(Exception): pass
@@ -93,8 +92,16 @@ def liquidate_investment(portfolio_id: int, ticker: str, quantity: int, sale_pri
             session.delete(investment)
         else:
             investment.quantity -= quantity
+        session.add(Transaction(
+            portfolio_id=portfolio.id,
+            username=user.username,
+            ticker=ticker,
+            quantity=quantity,
+            price=sale_price,
+            transaction_type="SELL",
+            date_time=datetime.datetime.now()
+        ))
         session.commit()
-        record_transaction(portfolio_id=portfolio.id, ticker=ticker, quantity=quantity, price=sale_price, transaction_type="SELL")
     except Exception as e:
         session.rollback() if session else None
         raise e

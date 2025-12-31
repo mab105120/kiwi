@@ -89,3 +89,25 @@ def test_update_nonexistent_user_balance_raises(db_session):
     with pytest.raises(user_service.UnsupportedUserOperationError) as e:
         user_service.update_user_balance('nonexistent_user', 300.00)
     assert "User with username nonexistent_user does not exist" in str(e.value)
+    def test_get_user_by_username(db_session):
+        user = user_service.get_user_by_username('admin')
+        assert user is not None
+        assert user.username == 'admin'
+        assert user.firstname == 'Admin'
+
+def test_get_user_by_username_nonexistent(db_session):
+    user = user_service.get_user_by_username('nonexistent_user')
+    assert user is None
+
+def test_get_user_by_username_empty_raises(db_session):
+    with pytest.raises(user_service.UnsupportedUserOperationError) as e:
+        user_service.get_user_by_username('')
+    assert str(e.value) == "Failed to retrieve user due to error: Username cannot be empty"
+
+def test_get_user_by_username_db_exception(db_session, monkeypatch):
+    def raise_exception(*args, **kwargs):
+        raise Exception("Database error")
+    monkeypatch.setattr(db_session, 'query', raise_exception)
+    with pytest.raises(user_service.UnsupportedUserOperationError) as e:
+        user_service.get_user_by_username('admin')
+    assert str(e.value) == "Failed to retrieve user due to error: Database error"

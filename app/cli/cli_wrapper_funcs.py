@@ -1,5 +1,4 @@
 from typing import Dict, List
-from unicodedata import name
 from rich.console import Console
 import app.service.transaction_service as transaction_service
 import app.service.login_service as login_service

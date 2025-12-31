@@ -1,7 +1,7 @@
 import pytest
 from app.models import User, Portfolio
 from app.service.portfolio_service import create_portfolio
-from app.service.security_service import InsufficientFundsError, execute_purchase_order, get_all_securities, SecurityException
+from app.service.security_service import InsufficientFundsError, execute_purchase_order, get_all_securities, SecurityException, get_security_by_ticker
 from app.service.user_service import create_user
 from app.service import transaction_service
 
@@ -17,6 +17,12 @@ def setup(db_session):
         "user": user,
         "portfolio": portfolio
     }
+
+def test_get_security_by_ticker(db_session):
+    security = get_security_by_ticker("AAPL")
+    assert security is not None
+    assert security.ticker == "AAPL"
+    assert security.price == 150.00
 
 def test_get_all_securities(db_session):
     securities = get_all_securities()

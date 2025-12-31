@@ -1,9 +1,10 @@
+import datetime
 import pytest
-from app.models import User, Portfolio
+from app.models import User, Portfolio, Transaction
 from app.service import transaction_service
 
 @pytest.fixture(autouse=True)
-def setup_db_with_transactions(db_session):
+def setup(db_session):
     # create a test user
     test_user = User(username='testuser', password='testpass', firstname='Test', lastname='User', balance=1000.00)
     db_session.add(test_user)
@@ -12,60 +13,46 @@ def setup_db_with_transactions(db_session):
     test_portfolio = Portfolio(name='Test Portfolio', description='A portfolio for testing', user=test_user)
     db_session.add(test_portfolio)
     db_session.commit()
-    yield
+    transactions = [
+        Transaction(
+            portfolio_id=test_portfolio.id,
+            username=test_user.username,
+            ticker='AAPL',
+            quantity=10,
+            price=150.00,
+            transaction_type="BUY",
+            date_time=datetime.datetime.now())
+        ,
+        Transaction(
+            portfolio_id=test_portfolio.id,
+            username=test_user.username,
+            ticker='GOOGL',
+            quantity=10,
+            price=250.00,
+            transaction_type="BUY",
+            date_time=datetime.datetime.now())
+    ]
+    db_session.add_all(transactions)
+    db_session.commit()
+    yield {
+        'user': test_user,
+        'portfolio': test_portfolio
+    }
 
-def test_record_transaction_valid(db_session):
-    portfolio = db_session.query(Portfolio).filter_by(name='Test Portfolio').one()
-    transaction_id = transaction_service.record_transaction(
-        portfolio_id=portfolio.id,
-        ticker='AAPL',
-        quantity=10,
-        price=150.0,
-        transaction_type='BUY'
-    )
-    assert transaction_id is not None
-    # query transaction by user
-    transactions = transaction_service.get_transactions_by_user('testuser')
+def test_get_transactions_by_user(setup, db_session):
+    user = setup['user']
+    transactions = transaction_service.get_transactions_by_user(user.username)
+    assert len(transactions) == 2
+    assert all(tx.username == user.username for tx in transactions)
+
+def test_get_transactions_by_portfolio(setup, db_session):
+    portfolio = setup['portfolio']
+    transactions = transaction_service.get_transactions_by_portfolio_id(portfolio.id)
+    assert len(transactions) == 2
+    assert all(tx.portfolio_id == portfolio.id for tx in transactions)
+
+def test_get_transactions_by_ticker(setup, db_session):
+    portfolio = setup['portfolio']
+    transactions = transaction_service.get_transactions_by_ticker('AAPL')
     assert len(transactions) == 1
-    assert transactions[0].transaction_id == transaction_id
-    # query transaction by portfolio id
-    transactions_by_portfolio = transaction_service.get_transactions_by_portfolio_id(portfolio.id)
-    assert len(transactions_by_portfolio) == 1
-    assert transactions_by_portfolio[0].transaction_id == transaction_id
-    # query transaction by ticker
-    transactions_by_ticker = transaction_service.get_transactions_by_ticker('AAPL')
-    assert len(transactions_by_ticker) == 1
-    assert transactions_by_ticker[0].transaction_id == transaction_id
-    
-    with pytest.raises(transaction_service.TransactionOperationError) as e:
-        transaction_service.record_transaction(
-            portfolio_id=portfolio.id,
-            ticker='AAPL',
-            quantity=-5,
-            price=150.0,
-            transaction_type='BUY'
-        )
-    assert "Invalid transaction parameters" in str(e.value)
-
-def test_record_transaction_invalid_portfolio(db_session):
-    with pytest.raises(transaction_service.TransactionOperationError) as e:
-        transaction_service.record_transaction(
-            portfolio_id=9999,  # non-existent portfolio
-            ticker='AAPL',
-            quantity=10,
-            price=150.0,
-            transaction_type='BUY'
-        )
-    assert "Portfolio with id 9999 does not exist" in str(e.value)
-
-def test_record_transaction_invalid_security(db_session):
-    portfolio = db_session.query(Portfolio).filter_by(name='Test Portfolio').one()
-    with pytest.raises(transaction_service.TransactionOperationError) as e:
-        transaction_service.record_transaction(
-            portfolio_id=portfolio.id,
-            ticker='INVALID',  # non-existent ticker
-            quantity=10,
-            price=150.0,
-            transaction_type='BUY'
-        )
-    assert "Security with ticker INVALID does not exist" in str(e.value)
+    assert transactions[0].ticker == 'AAPL'

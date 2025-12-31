@@ -1,5 +1,6 @@
+import datetime
 from typing import List
-from app.models import Security, Portfolio, Investment
+from app.models import Security, Portfolio, Investment, Transaction
 from app.service import transaction_service
 import app.database as db
 
@@ -31,7 +32,7 @@ def get_security_by_ticker(ticker: str) -> Security | None:
 def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
     session = None
     try:
-        if not portfolio_id or not ticker or not quantity or quantity <= 0:
+        if portfolio_id is None or not ticker or not quantity or quantity <= 0:
             raise SecurityException(f"Invalid purchase order parameters [portfolio_id={portfolio_id}, ticker={ticker}, quantity={quantity}]")
         session = db.get_session()
         portfolio = session.query(Portfolio).filter_by(id=portfolio_id).one_or_none()
@@ -56,8 +57,16 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
             portfolio.investments.append(Investment(ticker=ticker, quantity=quantity, security=security))
 
         user.balance -= total_cost
+        session.add(Transaction(
+            portfolio_id=portfolio.id,
+            username=user.username,
+            ticker=ticker,
+            quantity=quantity,
+            price=security.price,
+            transaction_type="BUY",
+            date_time=datetime.datetime.now()
+        ))
         session.commit()
-        transaction_service.record_transaction(portfolio_id=portfolio.id, ticker=ticker, quantity=quantity, price=security.price, transaction_type="BUY")
     except InsufficientFundsError as e:
         session.rollback() if session else None
         raise e
