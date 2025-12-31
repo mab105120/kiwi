@@ -56,7 +56,7 @@ def test_get_portfolio_by_id_db_failure(db_session, monkeypatch):
         portfolio_service.get_portfolio_by_id(1)
     assert "Failed to retrieve portfolio due to error: Database connection error" in str(e.value)
 
-def test_get_porfolio_by_invalid_id(db_session):
+def test_get_portfolio_by_invalid_id(db_session):
     invalid_id = 9999
     assert portfolio_service.get_portfolio_by_id(invalid_id) is None
 
