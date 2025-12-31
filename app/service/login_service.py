@@ -1,20 +1,10 @@
-import app.cli.input_collector as collector
-from app.domain.User import User
+from app.models.User import User
 import app.database as db
-from app.session_state import set_logged_in_user, reset_logged_in_user
+from app.cli.session_state import set_logged_in_user, reset_logged_in_user
 
 class LoginError(Exception): pass
 
-def login():
-    user_inputs = collector.collect_inputs({
-        "Username": "username",
-        "Password": "password"
-    })
-    username = user_inputs["username"]
-    password= user_inputs["password"]
-    _login(username, password)
-
-def _login(username, password):
+def login(username, password):
     session = None
     try:
         session = db.get_session()

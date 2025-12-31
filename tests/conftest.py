@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker, Session
 
 import app.database as db
 from app.database import Base
-from app.domain import User, Security
+from app.models import User, Security
 
 
 @pytest.fixture(scope="session")

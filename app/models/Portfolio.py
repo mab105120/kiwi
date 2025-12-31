@@ -5,8 +5,7 @@ from sqlalchemy.orm import relationship, mapped_column, Mapped
 from app.database import Base
 
 if TYPE_CHECKING:
-    from domain.Investment import Investment
-    from domain.User import User
+    from app.models import Investment, User, Transaction
 
 class Portfolio(Base):
     __tablename__ = 'portfolio'
@@ -25,6 +24,11 @@ class Portfolio(Base):
         foreign_keys=[owner],
         back_populates="portfolios",
         lazy="selectin")
+
+    transactions: Mapped[List["Transaction"]] = relationship(
+    "Transaction",
+    back_populates="portfolio",
+    lazy="selectin")
 
     def __str__(self):
         user_str = getattr(self, 'user', None)
