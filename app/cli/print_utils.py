@@ -5,6 +5,7 @@ from rich.console import Console
 
 _console = Console()
 
+
 def print_users_table(users: List[User]):
     table = Table(title="Users")
     table.add_column("Username", justify="right", style="cyan", no_wrap=True)
@@ -12,8 +13,11 @@ def print_users_table(users: List[User]):
     table.add_column("Last Name", style="magenta")
     table.add_column("Balance", justify="right", style="green")
     for user in users:
-        table.add_row(user.username, user.firstname, user.lastname, f"${user.balance:.2f}")
+        table.add_row(
+            user.username, user.firstname, user.lastname, f"${user.balance:.2f}"
+        )
     _console.print(table)
+
 
 def print_transactions_table(transactions: List[Transaction]):
     if len(transactions) == 0:
@@ -33,9 +37,10 @@ def print_transactions_table(transactions: List[Transaction]):
             transaction.transaction_type,
             str(transaction.quantity),
             f"${transaction.price:.2f}",
-            transaction.date_time.strftime("%Y-%m-%d %H:%M:%S")
+            transaction.date_time.strftime("%Y-%m-%d %H:%M:%S"),
         )
     _console.print(table)
+
 
 def print_portfolios_table(portfolios: List[Portfolio]):
     if len(portfolios) == 0:
@@ -47,14 +52,22 @@ def print_portfolios_table(portfolios: List[Portfolio]):
     table.add_column("Description")
     table.add_column("Value", justify="right", style="green")
     for portfolio in portfolios:
-        table.add_row(str(portfolio.id), portfolio.name, portfolio.description, f"${portfolio.get_portfolio_value():.2f}")
+        table.add_row(
+            str(portfolio.id),
+            portfolio.name,
+            portfolio.description,
+            f"${portfolio.get_portfolio_value():.2f}",
+        )
     _console.print(table)
+
 
 def print_portfolio_with_investments_table(portfolio: Portfolio):
     if len(portfolio.investments) == 0:
-            _console.print(f"No investments exist in portfolio with id {portfolio.id}")
-            return
-    table = Table(title=f"Investments in Portfolio {portfolio.name} (ID: {portfolio.id})")
+        _console.print(f"No investments exist in portfolio with id {portfolio.id}")
+        return
+    table = Table(
+        title=f"Investments in Portfolio {portfolio.name} (ID: {portfolio.id})"
+    )
     table.add_column("Ticker", style="cyan")
     table.add_column("Issuer")
     table.add_column("Quantity", justify="right")
@@ -62,8 +75,15 @@ def print_portfolio_with_investments_table(portfolio: Portfolio):
     table.add_column("Total Value", justify="right", style="green")
     for investment in portfolio.investments:
         total_value = investment.quantity * investment.security.price
-        table.add_row(investment.security.ticker, investment.security.issuer, str(investment.quantity), f"${investment.security.price:.2f}", f"${total_value:.2f}")
+        table.add_row(
+            investment.security.ticker,
+            investment.security.issuer,
+            str(investment.quantity),
+            f"${investment.security.price:.2f}",
+            f"${total_value:.2f}",
+        )
     _console.print(table)
+
 
 def print_securities_table(securities: List[Security]):
     table = Table(title="Securities")

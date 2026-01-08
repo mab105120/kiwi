@@ -5,3 +5,7 @@ __pycache__/
 .coverage
 notes/
 .pytest_cache/
+.env
+app.*
+local/
+.ruff*
