@@ -1,8 +1,9 @@
 import datetime
-from typing import List
 
 from app.db import db
-from app.models import Investment, Portfolio, Security, Transaction
+from app.models import Investment, Portfolio, Transaction
+from app.service import alpha_vantage_client
+from app.service.alpha_vantage_client import AlphaVantageError
 
 
 class SecurityException(Exception):
@@ -13,21 +14,13 @@ class InsufficientFundsError(Exception):
     pass
 
 
-def get_all_securities() -> List[Security]:
+def get_security_by_ticker(ticker: str):
     try:
-        securities = db.session.query(Security).all()
-        return securities
+        security_quote = alpha_vantage_client.get_quote(ticker)
+        return security_quote
+    except AlphaVantageError as e:
+        raise SecurityException(f'Failed to retrieve security due to error: {str(e)}')
     except Exception as e:
-        db.session.rollback()
-        raise SecurityException(f'Failed to retrieve securities due to error: {str(e)}')
-
-
-def get_security_by_ticker(ticker: str) -> Security | None:
-    try:
-        security = db.session.query(Security).filter_by(ticker=ticker).one_or_none()
-        return security
-    except Exception as e:
-        db.session.rollback()
         raise SecurityException(f'Failed to retrieve security due to error: {str(e)}')
 
 
@@ -44,11 +37,12 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
         if not user:
             raise SecurityException(f'User associated with the portfolio ({portfolio_id}) does not exist.')
 
-        security = db.session.query(Security).filter_by(ticker=ticker).one_or_none()
-        if not security:
-            raise SecurityException(f'Security with ticker {ticker} does not exist.')
+        # Fetch security details from Alpha Vantage API
+        security_quote = alpha_vantage_client.get_quote(ticker)
+        if not security_quote:
+            raise SecurityException(f'Security with ticker {ticker} does not exist or market data unavailable.')
 
-        total_cost = security.price * quantity
+        total_cost = security_quote.price * quantity
         if user.balance < total_cost:
             raise InsufficientFundsError('Insufficient funds to complete the purchase.')
 
@@ -56,7 +50,7 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
         if existing_investment:
             existing_investment.quantity += quantity
         else:
-            portfolio.investments.append(Investment(ticker=ticker, quantity=quantity, security=security))
+            portfolio.investments.append(Investment(ticker=ticker, quantity=quantity))
 
         user.balance -= total_cost
         db.session.add(
@@ -65,15 +59,12 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
                 username=user.username,
                 ticker=ticker,
                 quantity=quantity,
-                price=security.price,
+                price=security_quote.price,
                 transaction_type='BUY',
                 date_time=datetime.datetime.now(),
             )
         )
         db.session.flush()
-    except InsufficientFundsError as e:
-        db.session.rollback()
-        raise e
     except Exception as e:
         db.session.rollback()
-        raise SecurityException(f'Failed to execute purchase order due to error: {str(e)}')
+        raise SecurityException(f'Failed to execute purchase order: {str(e)}')

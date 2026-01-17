@@ -4,7 +4,8 @@ import pytest
 
 import app.service.security_service as security_service
 import app.service.transaction_service as transaction_service
-from app.models import Portfolio, Security, Transaction, User
+from app.models import Portfolio, Transaction, User
+from app.service.alpha_vantage_client import SecurityQuote
 
 # =============================================================================
 # FIXTURES - Module-specific test data
@@ -39,35 +40,10 @@ def test_user_with_portfolio(db_session):
 # =============================================================================
 
 
-def test_get_all_securities_empty_list(client, monkeypatch):
-    monkeypatch.setattr(security_service, 'get_all_securities', lambda: [])
-
-    response = client.get('/securities/')
-    assert response.status_code == 200
-    data = response.get_json()
-    assert isinstance(data, list)
-    assert len(data) == 0
-
-
-def test_get_all_securities_with_data(client, monkeypatch):
-    mock_security1 = Security(ticker='AAPL', issuer='Apple Inc.', price=150.00)
-    mock_security2 = Security(ticker='GOOGL', issuer='Alphabet Inc.', price=2800.00)
-
-    monkeypatch.setattr(security_service, 'get_all_securities', lambda: [mock_security1, mock_security2])
-
-    response = client.get('/securities/')
-    assert response.status_code == 200
-    data = response.get_json()
-    assert isinstance(data, list)
-    assert len(data) == 2
-    assert data[0]['ticker'] == 'AAPL'
-    assert data[1]['ticker'] == 'GOOGL'
-
-
 def test_get_security_success(client, monkeypatch):
-    mock_security = Security(ticker='AAPL', issuer='Apple Inc.', price=150.00)
+    mock_quote = SecurityQuote(ticker='AAPL', issuer='Apple Inc.', price=150.00, date='2026-01-08')
 
-    monkeypatch.setattr(security_service, 'get_security_by_ticker', lambda _: mock_security)
+    monkeypatch.setattr(security_service, 'get_security_by_ticker', lambda _: mock_quote)
 
     response = client.get('/securities/AAPL')
     assert response.status_code == 200
@@ -75,6 +51,7 @@ def test_get_security_success(client, monkeypatch):
     assert data['ticker'] == 'AAPL'
     assert data['issuer'] == 'Apple Inc.'
     assert data['price'] == 150.00
+    assert data['date'] == '2026-01-08'
 
 
 def test_get_security_not_found(client, monkeypatch):
@@ -247,34 +224,22 @@ def test_purchase_invalid_field_types(client):
 
 
 # =============================================================================
-# INTEGRATION TESTS - Full route functionality with DB
+# INTEGRATION TESTS - Full route functionality with DB and mocked API
 # =============================================================================
 
 
-def test_get_all_securities_integration(client):
-    """Integration test: Retrieve all securities from seeded data."""
-    response = client.get('/securities/')
-    assert response.status_code == 200
-    data = response.get_json()
-    assert isinstance(data, list)
-    assert len(data) >= 3
-    tickers = [s['ticker'] for s in data]
-    assert 'AAPL' in tickers
-    assert 'GOOGL' in tickers
-    assert 'MSFT' in tickers
-
-
-def test_get_security_by_ticker_integration(client):
-    """Integration test: Retrieve specific security by ticker."""
+def test_get_security_by_ticker_integration(client, mock_alpha_vantage):
+    """Integration test: Retrieve specific security by ticker via API."""
     response = client.get('/securities/AAPL')
     assert response.status_code == 200
     data = response.get_json()
     assert data['ticker'] == 'AAPL'
     assert data['issuer'] == 'Apple Inc.'
     assert data['price'] == 150.00
+    assert data['date'] == '2026-01-08'
 
 
-def test_get_security_not_found_integration(client):
+def test_get_security_not_found_integration(client, mock_alpha_vantage):
     """Integration test: Handle non-existent security."""
     response = client.get('/securities/NONEXISTENT')
     assert response.status_code == 404
@@ -283,7 +248,7 @@ def test_get_security_not_found_integration(client):
     assert 'request_id' in data
 
 
-def test_execute_purchase_order_integration(client, test_user_with_portfolio, db_session):
+def test_execute_purchase_order_integration(client, test_user_with_portfolio, db_session, mock_alpha_vantage):
     """Integration test: Execute full purchase workflow and verify balance update."""
     fixture_data = test_user_with_portfolio
     user = fixture_data['user']

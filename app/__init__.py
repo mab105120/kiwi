@@ -5,6 +5,7 @@ from logging.handlers import RotatingFileHandler
 from zoneinfo import ZoneInfo
 
 from flask import Flask, g, jsonify
+from flask_caching import Cache
 from pydantic import ValidationError
 
 from app.db import db
@@ -12,11 +13,19 @@ from app.log.RequestIdFilter import RequestIdFilter
 from app.routes import portfolio_bp, security_bp, user_bp
 from app.routes.domain import ErrorResponse
 
+# Initialize Flask-Caching
+cache = Cache()
+
 
 def create_app(config):
     try:
         app = Flask(__name__)
         app.config.from_object(config)
+
+        # Configure Flask-Caching
+        app.config['CACHE_TYPE'] = 'simple'
+        app.config['CACHE_DEFAULT_TIMEOUT'] = 300
+        cache.init_app(app)
 
         # configure logging
         with app.app_context():

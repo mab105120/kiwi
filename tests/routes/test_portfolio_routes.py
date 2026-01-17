@@ -226,7 +226,7 @@ def test_liquidate_investment_success(client, monkeypatch):
 
     monkeypatch.setattr(portfolio_service, 'liquidate_investment', mock_liquidate)
 
-    liquidate_data = {'ticker': 'AAPL', 'quantity': 10, 'sale_price': 150.0}
+    liquidate_data = {'ticker': 'AAPL', 'quantity': 10}
     response = client.post('/portfolios/1/liquidate/', json=liquidate_data)
     assert response.status_code == 200
     data = response.get_json()
@@ -240,7 +240,7 @@ def test_liquidate_investment_portfolio_not_found(client, monkeypatch):
 
     monkeypatch.setattr(portfolio_service, 'liquidate_investment', mock_liquidate)
 
-    liquidate_data = {'ticker': 'AAPL', 'quantity': 10, 'sale_price': 150.0}
+    liquidate_data = {'ticker': 'AAPL', 'quantity': 10}
     response = client.post('/portfolios/999/liquidate/', json=liquidate_data)
     assert response.status_code == 500
     data = response.get_json()
@@ -254,7 +254,7 @@ def test_liquidate_investment_ticker_not_found(client, monkeypatch):
 
     monkeypatch.setattr(portfolio_service, 'liquidate_investment', mock_liquidate)
 
-    liquidate_data = {'ticker': 'XXXX', 'quantity': 10, 'sale_price': 150.0}
+    liquidate_data = {'ticker': 'XXXX', 'quantity': 10}
     response = client.post('/portfolios/1/liquidate/', json=liquidate_data)
     assert response.status_code == 500
     data = response.get_json()
@@ -268,7 +268,7 @@ def test_liquidate_investment_insufficient_quantity(client, monkeypatch):
 
     monkeypatch.setattr(portfolio_service, 'liquidate_investment', mock_liquidate)
 
-    liquidate_data = {'ticker': 'AAPL', 'quantity': 1000, 'sale_price': 150.0}
+    liquidate_data = {'ticker': 'AAPL', 'quantity': 1000}
     response = client.post('/portfolios/1/liquidate/', json=liquidate_data)
     assert response.status_code == 500
     data = response.get_json()
@@ -360,7 +360,7 @@ def test_create_portfolio_invalid_field_types(client):
 
 
 def test_liquidate_investment_missing_ticker(client):
-    incomplete_data = {'quantity': 10, 'sale_price': 150.0}
+    incomplete_data = {'quantity': 10}
     response = client.post('/portfolios/1/liquidate/', json=incomplete_data)
     assert response.status_code == 400
     data = response.get_json()
@@ -369,23 +369,17 @@ def test_liquidate_investment_missing_ticker(client):
 
 
 def test_liquidate_investment_missing_quantity(client):
-    incomplete_data = {'ticker': 'AAPL', 'sale_price': 150.0}
+    incomplete_data = {'ticker': 'AAPL'}
     response = client.post('/portfolios/1/liquidate/', json=incomplete_data)
     assert response.status_code == 400
     data = response.get_json()
     assert 'error_msg' in data
 
 
-def test_liquidate_investment_missing_sale_price(client):
-    incomplete_data = {'ticker': 'AAPL', 'quantity': 10}
-    response = client.post('/portfolios/1/liquidate/', json=incomplete_data)
-    assert response.status_code == 400
-    data = response.get_json()
-    assert 'error_msg' in data
 
 
 def test_liquidate_investment_empty_ticker(client):
-    invalid_data = {'ticker': '', 'quantity': 10, 'sale_price': 150.0}
+    invalid_data = {'ticker': '', 'quantity': 10}
     response = client.post('/portfolios/1/liquidate/', json=invalid_data)
     assert response.status_code == 400
     data = response.get_json()
@@ -394,7 +388,7 @@ def test_liquidate_investment_empty_ticker(client):
 
 def test_liquidate_investment_ticker_too_long(client):
     long_ticker = 'A' * 11
-    invalid_data = {'ticker': long_ticker, 'quantity': 10, 'sale_price': 150.0}
+    invalid_data = {'ticker': long_ticker, 'quantity': 10}
     response = client.post('/portfolios/1/liquidate/', json=invalid_data)
     assert response.status_code == 400
     data = response.get_json()
@@ -402,7 +396,7 @@ def test_liquidate_investment_ticker_too_long(client):
 
 
 def test_liquidate_investment_zero_quantity(client):
-    invalid_data = {'ticker': 'AAPL', 'quantity': 0, 'sale_price': 150.0}
+    invalid_data = {'ticker': 'AAPL', 'quantity': 0}
     response = client.post('/portfolios/1/liquidate/', json=invalid_data)
     assert response.status_code == 400
     data = response.get_json()
@@ -410,31 +404,19 @@ def test_liquidate_investment_zero_quantity(client):
 
 
 def test_liquidate_investment_negative_quantity(client):
-    invalid_data = {'ticker': 'AAPL', 'quantity': -10, 'sale_price': 150.0}
+    invalid_data = {'ticker': 'AAPL', 'quantity': -10}
     response = client.post('/portfolios/1/liquidate/', json=invalid_data)
     assert response.status_code == 400
     data = response.get_json()
     assert 'error_msg' in data
 
 
-def test_liquidate_investment_zero_sale_price(client):
-    invalid_data = {'ticker': 'AAPL', 'quantity': 10, 'sale_price': 0.0}
-    response = client.post('/portfolios/1/liquidate/', json=invalid_data)
-    assert response.status_code == 400
-    data = response.get_json()
-    assert 'error_msg' in data
 
 
-def test_liquidate_investment_negative_sale_price(client):
-    invalid_data = {'ticker': 'AAPL', 'quantity': 10, 'sale_price': -150.0}
-    response = client.post('/portfolios/1/liquidate/', json=invalid_data)
-    assert response.status_code == 400
-    data = response.get_json()
-    assert 'error_msg' in data
 
 
 def test_liquidate_investment_invalid_types(client):
-    invalid_data = {'ticker': 'AAPL', 'quantity': 'ten', 'sale_price': 'expensive'}
+    invalid_data = {'ticker': 'AAPL', 'quantity': 'ten'}
     response = client.post('/portfolios/1/liquidate/', json=invalid_data)
     assert response.status_code == 400
     data = response.get_json()

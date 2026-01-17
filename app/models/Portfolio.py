@@ -1,34 +1,29 @@
 from __future__ import annotations
-from typing import List, TYPE_CHECKING
-from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.orm import relationship, mapped_column, Mapped
+
+from typing import TYPE_CHECKING, List
+
+from sqlalchemy import ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db import db
 
 if TYPE_CHECKING:
     # imports that are used only for type checking to avoid circular dependencies
-    from app.models import Investment, User, Transaction
+    from app.models import Investment, Transaction, User
 
 
 class Portfolio(db.Model):
-    __tablename__ = "portfolio"
+    __tablename__ = 'portfolio'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(30), nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=True)
-    owner: Mapped[str] = mapped_column(
-        String(30), ForeignKey("user.username"), nullable=False
-    )
+    owner: Mapped[str] = mapped_column(String(30), ForeignKey('user.username'), nullable=False)
 
-    investments: Mapped[List["Investment"]] = relationship(
-        "Investment", back_populates="portfolio", lazy="selectin"
-    )
+    investments: Mapped[List['Investment']] = relationship('Investment', back_populates='portfolio', lazy='selectin')
 
-    user: Mapped["User"] = relationship(
-        "User", foreign_keys=[owner], back_populates="portfolios", lazy="selectin"
-    )
+    user: Mapped['User'] = relationship('User', foreign_keys=[owner], back_populates='portfolios', lazy='selectin')
 
-    transactions: Mapped[List["Transaction"]] = relationship(
-        "Transaction", back_populates="portfolio", lazy="selectin"
-    )
+    transactions: Mapped[List['Transaction']] = relationship('Transaction', back_populates='portfolio', lazy='selectin')
 
     # this is needed because PyLance cannot infer the constructor signature from SQLAlchemy's Mapped class
     if TYPE_CHECKING:
@@ -43,21 +38,15 @@ class Portfolio(db.Model):
         ) -> None: ...
 
     def __str__(self):
-        user_str = getattr(self, "user", None)
-        username = user_str.username if user_str else "N/A"
-        return f"<Portfolio: id={self.id}; name={self.name}; description={self.description}; user={username}; #investments={len(self.investments)}>"
-
-    def get_portfolio_value(self) -> float:
-        total_value = 0.0
-        for investment in self.investments:
-            total_value += investment.security.price * investment.quantity
-        return total_value
+        user_str = getattr(self, 'user', None)
+        username = user_str.username if user_str else 'N/A'
+        return f'<Portfolio: id={self.id}; name={self.name}; description={self.description}; user={username}; #investments={len(self.investments)}>'
 
     def __to_dict__(self):
         return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "owner": self.owner,
-            "investments_count": len(self.investments),
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'owner': self.owner,
+            'investments_count': len(self.investments),
         }

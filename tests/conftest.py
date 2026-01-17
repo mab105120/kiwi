@@ -13,7 +13,9 @@ from sqlalchemy.orm import scoped_session
 from app import create_app
 from app.config import get_config
 from app.db import db
-from app.models import Security, User
+from app.models import User
+from app.service import alpha_vantage_client
+from app.service.alpha_vantage_client import SecurityQuote
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
@@ -61,6 +63,36 @@ def db_session(app, monkeypatch) -> Generator[scoped_session[Session], None, Non
         connection.close()
 
 
+@pytest.fixture
+def mock_alpha_vantage(monkeypatch):
+    def mock_get_quote(ticker: str) -> SecurityQuote | None:
+        mock_data = {
+            'AAPL': SecurityQuote(ticker='AAPL', issuer='Apple Inc.', price=150.00, date='2026-01-08'),
+            'GOOGL': SecurityQuote(ticker='GOOGL', issuer='Alphabet Inc.', price=2800.00, date='2026-01-08'),
+            'MSFT': SecurityQuote(ticker='MSFT', issuer='Microsoft Corp.', price=300.00, date='2026-01-08'),
+            'TSLA': SecurityQuote(ticker='TSLA', issuer='Tesla Inc.', price=700.00, date='2026-01-08'),
+        }
+        return mock_data.get(ticker.upper())
+
+    monkeypatch.setattr(alpha_vantage_client, 'get_quote', mock_get_quote)
+    return mock_get_quote
+
+
+@pytest.fixture
+def mock_alpha_vantage_response():
+    def _create_mock(response_data: dict):
+        class MockResponse:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return response_data
+
+        return MockResponse()
+
+    return _create_mock
+
+
 def _populate_database():
     try:
         admin_user = User(
@@ -71,13 +103,6 @@ def _populate_database():
             balance=1000.00,
         )
         db.session.add(admin_user)
-
-        securities = [
-            Security(ticker='AAPL', issuer='Apple Inc.', price=150.00),
-            Security(ticker='GOOGL', issuer='Alphabet Inc.', price=2800.00),
-            Security(ticker='MSFT', issuer='Microsoft Corp.', price=300.00),
-        ]
-        db.session.add_all(securities)
     except Exception:
         db.session.rollback()
     finally:

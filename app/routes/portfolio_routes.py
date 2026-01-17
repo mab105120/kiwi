@@ -74,7 +74,6 @@ def liquidate_investment(portfolio_id):
         portfolio_id=portfolio_id,
         ticker=liquidate_request.ticker,
         quantity=liquidate_request.quantity,
-        sale_price=liquidate_request.sale_price,
     )
     db.session.commit()
     return jsonify({'message': 'Investment liquidated successfully'}), 200

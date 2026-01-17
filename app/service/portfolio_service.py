@@ -3,6 +3,7 @@ from typing import List
 
 from app.db import db
 from app.models import Portfolio, Transaction, User
+from app.service import alpha_vantage_client
 
 
 class UnsupportedPortfolioOperationError(Exception):
@@ -67,24 +68,31 @@ def delete_portfolio(portfolio_id: int):
         raise e
 
 
-def liquidate_investment(portfolio_id: int, ticker: str, quantity: int, sale_price: float):
+def liquidate_investment(portfolio_id: int, ticker: str, quantity: int):
     try:
         portfolio = db.session.query(Portfolio).filter_by(id=portfolio_id).one_or_none()
         if not portfolio:
-            raise UnsupportedPortfolioOperationError(f'Portfolio with id {portfolio_id} does not exist')
+            raise PortfolioOperationError(f'Portfolio with id {portfolio_id} does not exist')
         user = portfolio.user
         investment = next(
-            (inv for inv in portfolio.investments if inv.security.ticker == ticker),
+            (inv for inv in portfolio.investments if inv.ticker == ticker),
             None,
         )
         if not investment:
-            raise UnsupportedPortfolioOperationError(
+            raise PortfolioOperationError(
                 f'No investment with ticker {ticker} exists in portfolio with id {portfolio_id}'
             )
         if investment.quantity < quantity:
-            raise UnsupportedPortfolioOperationError(
+            raise PortfolioOperationError(
                 f'Cannot liquidate {quantity} shares of {ticker}. Only {investment.quantity} shares available in portfolio'
             )
+
+        # Fetch current market price from Alpha Vantage API
+        security_quote = alpha_vantage_client.get_quote(ticker)
+        if not security_quote:
+            raise PortfolioOperationError(f'Unable to fetch current price for {ticker} from market data provider')
+
+        sale_price = security_quote.price
         total_proceeds = sale_price * quantity
         user.balance += total_proceeds
         if investment.quantity == quantity:
@@ -105,4 +113,4 @@ def liquidate_investment(portfolio_id: int, ticker: str, quantity: int, sale_pri
         db.session.flush()
     except Exception as e:
         db.session.rollback()
-        raise e
+        raise PortfolioOperationError(f'Failed to liquidate investment: {str(e)}')
