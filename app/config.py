@@ -12,6 +12,8 @@ class Config:
         # 'pool_size': 20,
         # 'max_overflow': 40
     }
+    ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
+    ALPHA_VINTAGE_BASE_URL = 'https://www.alphavantage.co'
 
 
 class TestConfig(Config):

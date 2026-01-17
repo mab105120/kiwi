@@ -9,22 +9,23 @@ from app.routes.domain import ErrorResponse
 security_bp = Blueprint('security', __name__)
 
 
-@security_bp.route('/', methods=['GET'])
-def get_all_securities():
-    securities = security_service.get_all_securities()
-    return jsonify([security.__to_dict__() for security in securities]), 200
-
-
 @security_bp.route('/<ticker>', methods=['GET'])
 def get_security(ticker):
-    security = security_service.get_security_by_ticker(ticker)
-    if security is None:
+    security_quote = security_service.get_security_by_ticker(ticker)
+    if security_quote is None:
         error = ErrorResponse(
-            error_msg=f'Security {ticker} not found',
+            error_msg=f'Security {ticker} not found or market data unavailable',
             request_id=g.get('request_id', 'N/A'),
         )
         return jsonify(error.model_dump()), 404
-    return jsonify(security.__to_dict__()), 200
+    return jsonify(
+        {
+            'ticker': security_quote.ticker,
+            'issuer': security_quote.issuer,
+            'price': security_quote.price,
+            'date': security_quote.date,
+        }
+    ), 200
 
 
 @security_bp.route('/purchase', methods=['POST'])
