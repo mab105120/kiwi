@@ -13,19 +13,25 @@ class Config:
         # 'max_overflow': 40
     }
     ALPHA_VANTAGE_API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY')
-    ALPHA_VINTAGE_BASE_URL = 'https://www.alphavantage.co'
+    ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co'
 
 
 class TestConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite+pysqlite:///:memory:'
     SQLALCHEMY_ECHO = False
+    COGNITO_REGION = ''
+    COGNITO_USER_POOL_ID = ''
+    COGNITO_APP_CLIENT_ID = ''
 
 
 class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://kiwi_local:kiwilocaldb@localhost:3306/kiwilocal'
+    COGNITO_REGION = os.environ.get('COGNITO_REGION')
+    COGNITO_USER_POOL_ID = os.environ.get('COGNITO_USER_POOL_ID')
+    COGNITO_APP_CLIENT_ID = os.environ.get('COGNITO_APP_CLIENT_ID')
     DEBUG = True
-    SQLALCHEMY_ECHO = True
+    SQLALCHEMY_ECHO = False
 
 
 class ProductionConfig(Config):

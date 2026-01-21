@@ -284,10 +284,11 @@ def test_liquidate_investment_insufficient_quantity(client, monkeypatch):
 def test_create_portfolio_missing_name(client):
     incomplete_data = {'description': 'Test description', 'username': 'testuser'}
     response = client.post('/portfolios/', json=incomplete_data)
-    assert response.status_code == 400
+
     data = response.get_json()
     assert 'error_msg' in data
     assert 'request_id' in data
+    assert response.status_code == 400
 
 
 def test_create_portfolio_missing_description(client):
@@ -376,8 +377,6 @@ def test_liquidate_investment_missing_quantity(client):
     assert 'error_msg' in data
 
 
-
-
 def test_liquidate_investment_empty_ticker(client):
     invalid_data = {'ticker': '', 'quantity': 10}
     response = client.post('/portfolios/1/liquidate/', json=invalid_data)
@@ -409,10 +408,6 @@ def test_liquidate_investment_negative_quantity(client):
     assert response.status_code == 400
     data = response.get_json()
     assert 'error_msg' in data
-
-
-
-
 
 
 def test_liquidate_investment_invalid_types(client):

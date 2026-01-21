@@ -1,5 +1,6 @@
 from typing import List
 
+from flask import current_app
 from sqlalchemy.exc import IntegrityError
 
 from app.db import db
@@ -22,7 +23,9 @@ def get_user_by_username(username: str) -> User | None:
 
 def get_all_users() -> List[User]:
     try:
+        current_app.logger.info('Retrieving all users from the database')
         users = db.session.query(User).all()
+        current_app.logger.info(f'Retrieved {len(users)} users')
         return users
     except Exception as e:
         db.session.rollback()

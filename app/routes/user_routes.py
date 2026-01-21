@@ -1,5 +1,6 @@
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 
+import app.auth as auth
 import app.routes.domain.request_schema as request_schema
 import app.service.transaction_service as transaction_service
 import app.service.user_service as user_service
@@ -10,12 +11,15 @@ user_bp = Blueprint('user', __name__)
 
 
 @user_bp.route('/', methods=['GET'])
+@auth.requires_auth
 def get_users():
+    current_app.logger.info(f'User {g.user["username"]} requested all users')
     users = user_service.get_all_users()
     return jsonify([user.__to_dict__() for user in users]), 200
 
 
 @user_bp.route('/<username>', methods=['GET'])
+@auth.requires_auth
 def get_user(username):
     user = user_service.get_user_by_username(username)
     if user is None:
@@ -28,6 +32,7 @@ def get_user(username):
 
 
 @user_bp.route('/', methods=['POST'])
+@auth.requires_auth
 def create_user():
     create_user_request = request_schema.CreateUserRequest(**request.get_json())
     user_service.create_user(**create_user_request.model_dump())
@@ -36,6 +41,7 @@ def create_user():
 
 
 @user_bp.route('/update-balance', methods=['PUT'])
+@auth.requires_auth
 def update_balance():
     update_balance_request = request_schema.UpdateUserBalanceRequest(**request.get_json())
     user_service.update_user_balance(**update_balance_request.model_dump())
@@ -44,6 +50,7 @@ def update_balance():
 
 
 @user_bp.route('/<username>', methods=['DELETE'])
+@auth.requires_auth
 def delete_user(username):
     user_service.delete_user(username)
     db.session.commit()
@@ -51,6 +58,7 @@ def delete_user(username):
 
 
 @user_bp.route('/<username>/transactions', methods=['GET'])
+@auth.requires_auth
 def get_user_transactions(username):
     transactions = transaction_service.get_transactions_by_user(username)
     return jsonify([transaction.__to_dict__() for transaction in transactions]), 200
