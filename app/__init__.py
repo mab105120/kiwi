@@ -1,13 +1,15 @@
 import datetime
 import logging
+import sys
 import uuid
 from logging.handlers import RotatingFileHandler
 from zoneinfo import ZoneInfo
 
-from flask import Flask, g, jsonify
+from flask import Flask, g, jsonify, request
 from flask_caching import Cache
 from pydantic import ValidationError
 
+from app.auth import CognitoTokenValidator
 from app.db import db
 from app.log.RequestIdFilter import RequestIdFilter
 from app.routes import portfolio_bp, security_bp, user_bp
@@ -27,18 +29,29 @@ def create_app(config):
         app.config['CACHE_DEFAULT_TIMEOUT'] = 300
         cache.init_app(app)
 
+        # configure authentication
+        cognito_validator = CognitoTokenValidator(
+            region=app.config['COGNITO_REGION'],
+            user_pool_id=app.config['COGNITO_USER_POOL_ID'],
+            app_client_id=app.config['COGNITO_APP_CLIENT_ID'],
+        )
+        app.config['COGNITO_VALIDATOR'] = cognito_validator
         # configure logging
         with app.app_context():
-            if not app.debug:
-                if not app.logger.handlers:
+            if not app.testing:
+                print('configuring logging')
+                app.logger.handlers.clear()
+                if app.debug or app.testing:
+                    print('setting log output to console')
+                    handler = logging.StreamHandler(sys.stdout)
+                else:
+                    print('setting log output to file')
                     handler = RotatingFileHandler('app.log', maxBytes=100000, backupCount=10)
-                    handler.setLevel(logging.INFO)
-                    formatter = logging.Formatter(
-                        '%(asctime)s [%(request_id)s] %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-                    )
-                    handler.setFormatter(formatter)
-                    handler.addFilter(RequestIdFilter())
-                    app.logger.addHandler(handler)
+                handler.setLevel(logging.INFO)
+                formatter = logging.Formatter('%(asctime)s [%(request_id)s] %(levelname)s: %(message)s')
+                handler.setFormatter(formatter)
+                handler.addFilter(RequestIdFilter())
+                app.logger.addHandler(handler)
                 app.logger.setLevel(logging.INFO)
                 app.logger.info('Starting app..')
 
@@ -46,13 +59,15 @@ def create_app(config):
         def before_request():
             g.request_id = str(uuid.uuid4())
             g.request_start_time = datetime.datetime.now(ZoneInfo('America/New_York'))
-            app.logger.info(f'New request started with ID: {g.request_id}')
+            app.logger.info(
+                f'New request: @{request.method} {request.host}{request.path} args: {request.args.to_dict()} '
+            )
 
         @app.after_request
         def after_request(response):
             request_end_time = datetime.datetime.now(ZoneInfo('America/New_York'))
             duration = (request_end_time - g.request_start_time).total_seconds()
-            app.logger.info(f'Request ID: {g.request_id} completed in {duration} seconds')
+            app.logger.info(f'Request completed in {duration} seconds with {response.status}')
             return response
 
         @app.errorhandler(Exception)

@@ -11,6 +11,7 @@ from flask_sqlalchemy.session import Session
 from sqlalchemy.orm import scoped_session
 
 from app import create_app
+from app.auth import CognitoTokenValidator
 from app.config import get_config
 from app.db import db
 from app.models import User
@@ -25,12 +26,38 @@ sys.path.insert(0, str(project_root))
 def app() -> Generator[Flask, None, None]:
     test_config = get_config('test')
     test_app = create_app(test_config)
+    # configure authentication
+    cognito_validator = CognitoTokenValidator(
+        region=test_app.config['COGNITO_REGION'],
+        user_pool_id=test_app.config['COGNITO_USER_POOL_ID'],
+        app_client_id=test_app.config['COGNITO_APP_CLIENT_ID'],
+    )
+    test_app.config['COGNITO_VALIDATOR'] = cognito_validator
     with test_app.app_context():
         db.create_all()
         _populate_database()
         yield test_app
         db.session.remove()
         db.drop_all()
+
+
+@pytest.fixture(scope='function', autouse=True)
+def mock_auth(app, monkeypatch):
+    validator = app.config['COGNITO_VALIDATOR']
+    monkeypatch.setattr('app.auth.get_token_from_header', lambda: 'token1234')
+
+    def mock_validate(token):
+        return {
+            'sub': 'user-abc',
+            'username': 'test_user',
+            'email': 'test@test.com',
+            'exp': 1234567890,
+            'token_use': 'access',
+            'custom_field': 'custom_value',
+        }
+
+    if validator is not None:
+        monkeypatch.setattr(validator, 'validate_token', mock_validate)
 
 
 @pytest.fixture(scope='function')
@@ -63,7 +90,7 @@ def db_session(app, monkeypatch) -> Generator[scoped_session[Session], None, Non
         connection.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def mock_alpha_vantage(monkeypatch):
     def mock_get_quote(ticker: str) -> SecurityQuote | None:
         mock_data = {
@@ -78,7 +105,7 @@ def mock_alpha_vantage(monkeypatch):
     return mock_get_quote
 
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def mock_alpha_vantage_response():
     def _create_mock(response_data: dict):
         class MockResponse:
