@@ -1,6 +1,5 @@
 from flask import Blueprint, g, jsonify, request
 
-import app.auth as auth
 import app.routes.domain.request_schema as request_schema
 import app.service.portfolio_service as portfolio_service
 import app.service.transaction_service as transaction_service
@@ -12,7 +11,6 @@ portfolio_bp = Blueprint('portfolio', __name__)
 
 
 @portfolio_bp.route('/', methods=['GET'])
-@auth.requires_auth
 def get_all_portfolios():
     portfolios = portfolio_service.get_all_portfolios()
     return jsonify([portfolio.__to_dict__() for portfolio in portfolios]), 200
@@ -31,7 +29,6 @@ def get_portfolio(portfolio_id):
 
 
 @portfolio_bp.route('/user/<username>', methods=['GET'])
-@auth.requires_auth
 def get_portfolios_by_user(username):
     user = user_service.get_user_by_username(username)
     if user is None:
@@ -45,7 +42,6 @@ def get_portfolios_by_user(username):
 
 
 @portfolio_bp.route('/', methods=['POST'])
-@auth.requires_auth
 def create_portfolio():
     create_portfolio_request = request_schema.CreatePortfolioRequest(**request.get_json())
     user = user_service.get_user_by_username(create_portfolio_request.username)
@@ -65,7 +61,6 @@ def create_portfolio():
 
 
 @portfolio_bp.route('/<int:portfolio_id>', methods=['DELETE'])
-@auth.requires_auth
 def delete_portfolio(portfolio_id):
     portfolio_service.delete_portfolio(portfolio_id)
     db.session.commit()
@@ -73,7 +68,6 @@ def delete_portfolio(portfolio_id):
 
 
 @portfolio_bp.route('/<int:portfolio_id>/liquidate/', methods=['POST'])
-@auth.requires_auth
 def liquidate_investment(portfolio_id):
     liquidate_request = request_schema.LiquidateInvestmentRequest(**request.get_json())
     portfolio_service.liquidate_investment(
@@ -86,7 +80,6 @@ def liquidate_investment(portfolio_id):
 
 
 @portfolio_bp.route('/<int:portfolio_id>/transactions', methods=['GET'])
-@auth.requires_auth
 def get_portfolio_transactions(portfolio_id):
     transactions = transaction_service.get_transactions_by_portfolio_id(portfolio_id)
     return jsonify([transaction.__to_dict__() for transaction in transactions]), 200

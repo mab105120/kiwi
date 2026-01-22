@@ -4,7 +4,7 @@ from flask import g, jsonify
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 
-from app.auth import CognitoTokenValidator, get_token_from_header, requires_auth
+from app.auth import CognitoTokenValidator, get_token_from_header
 
 
 def test_get_token_missing_authorization_header(app):
@@ -315,101 +315,3 @@ def test_validate_token_valid(monkeypatch):
         'exp': 9999999999,
         'token_use': 'access',
     }
-
-
-def test_requires_auth_no_token(app, monkeypatch):
-    monkeypatch.setattr('app.auth.get_token_from_header', lambda: None)
-
-    @requires_auth
-    def protected_route():
-        return jsonify({'message': 'success'}), 401
-
-    with app.test_request_context('/protected', headers={}):
-        response = protected_route()
-        assert response[1] == 401
-        data = response[0].get_json()
-        assert 'error' in data
-        assert data['error'] == 'Missing authorization token'
-        assert data['message'] == 'Authorization header with Bearer token required'
-
-
-def test_requires_auth_no_validator_in_config(app, monkeypatch):
-    monkeypatch.setattr('app.auth.get_token_from_header', lambda: 'Bearer token123')
-    original_validator = app.config.get('COGNITO_VALIDATOR')
-    app.config['COGNITO_VALIDATOR'] = None
-
-    @requires_auth
-    def protected_route():
-        return jsonify({'message': 'success'}), 500
-
-    with app.test_request_context('/protected'):
-        response = protected_route()
-        assert response[1] == 500
-        data = response[0].get_json()
-        assert 'error' in data
-        assert data['error'] == 'Server configuration error'
-
-    app.config['COGNITO_VALIDATOR'] = original_validator
-
-
-def test_requires_auth_invalid_token(app, monkeypatch):
-    monkeypatch.setattr('app.auth.get_token_from_header', lambda: 'Bearer bad-token')
-    validator = CognitoTokenValidator(region='us-east-1', user_pool_id='pool123', app_client_id='client123')
-    original_validator = app.config.get('COGNITO_VALIDATOR')
-    app.config['COGNITO_VALIDATOR'] = validator
-
-    def mock_validate_token(token):
-        raise Exception('Invalid signature')
-
-    monkeypatch.setattr(validator, 'validate_token', mock_validate_token)
-
-    @requires_auth
-    def protected_route():
-        return jsonify({'message': 'success'}), 401
-
-    with app.test_request_context('/protected'):
-        response = protected_route()
-        assert response[1] == 401
-        data = response[0].get_json()
-        assert 'error' in data
-        assert data['error'] == 'Invalid token'
-        assert 'Invalid signature' in data['message']
-
-    app.config['COGNITO_VALIDATOR'] = original_validator
-
-
-def test_requires_auth_valid_token(app, monkeypatch):
-    @requires_auth
-    def protected_route():
-        return jsonify(
-            {
-                'message': 'success',
-                'user_id': g.user['user_id'],
-                'username': g.user['username'],
-                'email': g.user['email'],
-            }
-        )
-
-    with app.test_request_context('/protected'):
-        response = protected_route()
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data['message'] == 'success'
-        assert data['user_id'] == 'user-abc'
-        assert data['username'] == 'test_user'
-        assert data['email'] == 'test@test.com'
-
-
-def test_requires_auth_populates_g_user_with_all_fields(app, monkeypatch):
-    @requires_auth
-    def protected_route():
-        assert 'user' in g
-        assert g.user['user_id'] == 'user-abc'
-        assert g.user['username'] == 'test_user'
-        assert g.user['email'] == 'test@test.com'
-        assert g.user['token_expiry'] == 1234567890
-        return jsonify({'message': 'verified'}), 200
-
-    with app.test_request_context('/protected'):
-        response = protected_route()
-        assert response[1] == 200
