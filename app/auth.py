@@ -60,7 +60,6 @@ class CognitoTokenValidator:
             Exception: If token validation fails
         """
         # Get the signing key
-        current_app.logger.info('Validating access token')
         signing_key = self._get_signing_key(token)
         if not signing_key:
             raise Exception('Unable to find matching signing key')
@@ -87,7 +86,6 @@ class CognitoTokenValidator:
                 current_app.logger.warning(f'Invalid token_use: {claims.get("token_use")}')
                 raise Exception(f'Invalid token_use: {claims.get("token_use")}')
 
-            current_app.logger.info('Access token validated successfully')
             return claims
 
         except ExpiredSignatureError:
@@ -115,54 +113,3 @@ def get_token_from_header() -> Optional[str]:
         return None
 
     return parts[1]
-
-
-def requires_auth(f):
-    """
-    Decorator to protect Flask routes with Cognito authentication
-
-    Usage:
-        @app.route('/protected')
-        @requires_auth
-        def protected_route():
-            # Access user info via g.user
-            return jsonify({"message": f"Hello {g.user['username']}"})
-    """
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        from flask import g
-
-        # Extract token from header
-        token = get_token_from_header()
-
-        if not token:
-            return jsonify(
-                {'error': 'Missing authorization token', 'message': 'Authorization header with Bearer token required'}
-            ), 401
-
-        # Get validator from app config
-        validator = current_app.config.get('COGNITO_VALIDATOR')
-
-        if not validator:
-            return jsonify({'error': 'Server configuration error', 'message': 'Token validator not configured'}), 500
-
-        # Validate token
-        try:
-            claims = validator.validate_token(token)
-
-            # Store user info in Flask's g object (available throughout request)
-            g.user = {
-                'user_id': claims.get('sub'),  # Subject (user ID)
-                'username': claims.get('username'),  # Username
-                'email': claims.get('email'),  # Email (if in scope)
-                'token_expiry': claims.get('exp'),  # Expiration timestamp
-                'claims': claims,  # Full claims if needed
-            }
-
-        except Exception as e:
-            return jsonify({'error': 'Invalid token', 'message': str(e)}), 401
-
-        return f(*args, **kwargs)
-
-    return decorated_function

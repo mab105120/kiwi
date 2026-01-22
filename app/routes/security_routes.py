@@ -1,6 +1,5 @@
 from flask import Blueprint, g, jsonify, request
 
-import app.auth as auth
 import app.routes.domain.request_schema as request_schema
 import app.service.security_service as security_service
 import app.service.transaction_service as transaction_service
@@ -11,7 +10,6 @@ security_bp = Blueprint('security', __name__)
 
 
 @security_bp.route('/<ticker>', methods=['GET'])
-@auth.requires_auth
 def get_security(ticker):
     security_quote = security_service.get_security_by_ticker(ticker)
     if security_quote is None:
@@ -31,7 +29,6 @@ def get_security(ticker):
 
 
 @security_bp.route('/purchase', methods=['POST'])
-@auth.requires_auth
 def execute_purchase_order():
     purchase_request = request_schema.ExecutePurchaseOrderRequest(**request.get_json())
     security_service.execute_purchase_order(

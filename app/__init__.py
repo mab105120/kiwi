@@ -9,6 +9,7 @@ from flask import Flask, g, jsonify, request
 from flask_caching import Cache
 from pydantic import ValidationError
 
+from app import auth
 from app.auth import CognitoTokenValidator
 from app.db import db
 from app.log.RequestIdFilter import RequestIdFilter
@@ -62,6 +63,41 @@ def create_app(config):
             app.logger.info(
                 f'New request: @{request.method} {request.host}{request.path} args: {request.args.to_dict()} '
             )
+            # authenticate request caller
+            token = auth.get_token_from_header()
+            if not token:
+                app.logger.warning('Missing authorization token')
+                error = ErrorResponse(
+                    error_msg='Missing authorization token',
+                    request_id=g.request_id,
+                )
+                return jsonify(error.model_dump()), 401
+            validator = app.config.get('COGNITO_VALIDATOR')
+            if not validator:
+                error = ErrorResponse(
+                    error_msg='Server configuration error: Token validator not configured',
+                    request_id=g.request_id,
+                )
+                return jsonify(error.model_dump()), 500
+            try:
+                app.logger.info('Validating access token')
+                claims = validator.validate_token(token)
+                g.user = {
+                    'user_id': claims.get('sub'),
+                    'username': claims.get('username'),
+                    'email': claims.get('email'),
+                    'token_expiry': claims.get('exp'),
+                    'claims': claims,
+                }
+                app.logger.info(f'Token successfully validated. Authenticated user: {g.user["username"]}')
+
+            except Exception as e:
+                app.logger.warning(f'Invalid token: {str(e)}')
+                error = ErrorResponse(
+                    error_msg=f'Invalid token: {str(e)}',
+                    request_id=g.request_id,
+                )
+                return jsonify(error.model_dump()), 401
 
         @app.after_request
         def after_request(response):
