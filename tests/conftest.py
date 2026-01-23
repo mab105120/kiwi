@@ -124,7 +124,6 @@ def _populate_database():
     try:
         admin_user = User(
             username='admin',
-            password='admin',
             firstname='Admin',
             lastname='User',
             balance=1000.00,

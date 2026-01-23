@@ -69,7 +69,7 @@ def test_get_portfolio_not_found(client, monkeypatch):
 def test_get_portfolios_by_user_success(client, monkeypatch):
     call_count = {'count': 0}
 
-    mock_user = User(username='testuser', password='pass', firstname='Test', lastname='User', balance=1000.0)
+    mock_user = User(username='testuser', firstname='Test', lastname='User', balance=1000.0)
     mock_portfolio = Portfolio(id=1, name='User Portfolio', description='Desc')
     mock_portfolio.owner = 'testuser'
     mock_portfolio.investments = []
@@ -108,7 +108,7 @@ def test_get_portfolios_by_user_not_found(client, monkeypatch):
 
 
 def test_get_portfolios_by_user_empty_list(client, monkeypatch):
-    mock_user = User(username='testuser', password='pass', firstname='Test', lastname='User', balance=1000.0)
+    mock_user = User(username='testuser', firstname='Test', lastname='User', balance=1000.0)
 
     monkeypatch.setattr(user_service, 'get_user_by_username', lambda _: mock_user)
     monkeypatch.setattr(portfolio_service, 'get_portfolios_by_user', lambda _: [])
@@ -123,7 +123,7 @@ def test_get_portfolios_by_user_empty_list(client, monkeypatch):
 def test_create_portfolio_success(client, monkeypatch):
     call_count = {'count': 0}
 
-    mock_user = User(username='testuser', password='pass', firstname='Test', lastname='User', balance=1000.0)
+    mock_user = User(username='testuser', firstname='Test', lastname='User', balance=1000.0)
 
     def mock_create(**_):
         call_count['count'] += 1
@@ -170,7 +170,7 @@ def test_create_portfolio_user_not_found(client, monkeypatch):
 
 
 def test_create_portfolio_service_error(client, monkeypatch):
-    mock_user = User(username='testuser', password='pass', firstname='Test', lastname='User', balance=1000.0)
+    mock_user = User(username='testuser', firstname='Test', lastname='User', balance=1000.0)
 
     def mock_create(**_):
         raise Exception('Database error')

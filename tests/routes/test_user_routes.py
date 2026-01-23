@@ -10,14 +10,12 @@ def test_get_all_users(client, monkeypatch):
     mock_users = [
         User(
             username='user1',
-            password='pass',
             firstname='First',
             lastname='Last',
             balance=100.0,
         ),
         User(
             username='user2',
-            password='pass',
             firstname='Second',
             lastname='User',
             balance=200.0,
@@ -36,7 +34,6 @@ def test_get_user_success(client, monkeypatch):
     # Mock service to return a user
     mock_user = User(
         username='testuser',
-        password='pass',
         firstname='Test',
         lastname='User',
         balance=100.0,
@@ -67,7 +64,6 @@ def test_create_user_success(client, monkeypatch):
 
     new_user = {
         'username': 'testuser1',
-        'password': 'password123',
         'firstname': 'Test',
         'lastname': 'User',
     }
@@ -82,7 +78,6 @@ def test_create_user_with_custom_balance(client, monkeypatch):
 
     new_user = {
         'username': 'testuser2',
-        'password': 'password123',
         'firstname': 'Test',
         'lastname': 'User',
         'balance': 500.0,
@@ -101,7 +96,6 @@ def test_create_user_duplicate_username(client, monkeypatch):
 
     duplicate_user = {
         'username': 'admin',
-        'password': 'password123',
         'firstname': 'Test',
         'lastname': 'User',
     }
@@ -168,7 +162,6 @@ def test_delete_admin_user(client, monkeypatch):
 
 
 def test_create_user_missing_required_fields(client):
-    # Missing password and firstname
     incomplete_user = {'username': 'incomplete', 'lastname': 'User'}
     response = client.post('/users/', json=incomplete_user)
     assert response.status_code == 400
@@ -181,7 +174,6 @@ def test_create_user_invalid_field_types(client):
     # Balance should be float, not string
     invalid_user = {
         'username': 'testuser3',
-        'password': 'password123',
         'firstname': 'Test',
         'lastname': 'User',
         'balance': 'not_a_number',
@@ -197,21 +189,6 @@ def test_create_user_username_too_long(client):
     long_username = 'a' * 31
     invalid_user = {
         'username': long_username,
-        'password': 'password123',
-        'firstname': 'Test',
-        'lastname': 'User',
-    }
-    response = client.post('/users/', json=invalid_user)
-    assert response.status_code == 400
-    data = response.get_json()
-    assert 'error_msg' in data
-
-
-def test_create_user_password_too_short(client):
-    # Password less than 6 characters
-    invalid_user = {
-        'username': 'testuser4',
-        'password': '12345',  # Only 5 characters
         'firstname': 'Test',
         'lastname': 'User',
     }
@@ -225,7 +202,6 @@ def test_create_user_negative_balance(client):
     # Negative balance violates constraint
     invalid_user = {
         'username': 'testuser5',
-        'password': 'password123',
         'firstname': 'Test',
         'lastname': 'User',
         'balance': -100.0,
@@ -273,7 +249,6 @@ def test_create_and_retrieve_user_integration(client):
     # Create user
     new_user = {
         'username': 'integrationuser1',
-        'password': 'password123',
         'firstname': 'Integration',
         'lastname': 'User',
         'balance': 250.0,
@@ -295,7 +270,6 @@ def test_update_balance_and_verify_integration(client):
     # Create user
     new_user = {
         'username': 'integrationuser2',
-        'password': 'password123',
         'firstname': 'Integration',
         'lastname': 'User',
         'balance': 100.0,
@@ -319,7 +293,6 @@ def test_delete_user_and_verify_gone_integration(client):
     # Create user
     new_user = {
         'username': 'integrationuser3',
-        'password': 'password123',
         'firstname': 'Integration',
         'lastname': 'User',
     }

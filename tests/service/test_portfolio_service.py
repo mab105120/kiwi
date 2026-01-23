@@ -1,4 +1,5 @@
 import pytest
+
 import app.service.portfolio_service as portfolio_service
 from app.models import Investment, Portfolio, User
 
@@ -7,7 +8,6 @@ from app.models import Investment, Portfolio, User
 def setup(db_session):
     user = User(
         username='testuser',
-        password='testpass',
         firstname='Test',
         lastname='User',
         balance=1000.0,
@@ -28,9 +28,7 @@ def test_get_portfolios_by_user_db_failure(db_session, monkeypatch):
 
     monkeypatch.setattr(db_session, 'query', failing_get_session)
     with pytest.raises(Exception) as e:
-        portfolio_service.get_portfolios_by_user(
-            User(username='testuser', firstname='', lastname='', balance=0.0, password='')
-        )
+        portfolio_service.get_portfolios_by_user(User(username='testuser', firstname='', lastname='', balance=0.0))
     assert 'Failed to retrieve portfolios due to error: Database query error' in str(e.value)
 
 
@@ -89,7 +87,6 @@ def test_create_portfolio(setup, db_session):
 def test_create_portfolio_invalid_input():
     user = User(
         username='testuser',
-        password='testpass',
         firstname='Test',
         lastname='User',
         balance=1000.0,
@@ -109,7 +106,7 @@ def test_create_portfolio_db_failure(db_session, monkeypatch):
         portfolio_service.create_portfolio(
             'Fail Portfolio',
             'This should fail',
-            User(username='testuser', firstname='', lastname='', balance=0.0, password=''),
+            User(username='testuser', firstname='', lastname='', balance=0.0),
         )
     assert 'Failed to create portfolio due to error: Database connection error' in str(e.value)
 

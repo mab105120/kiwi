@@ -16,7 +16,6 @@ from app.service.alpha_vantage_client import SecurityQuote
 def test_user_with_portfolio(db_session):
     user = User(
         username='securitytestuser',
-        password='testpass',
         firstname='Security',
         lastname='Tester',
         balance=10000.00,

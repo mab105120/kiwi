@@ -26,7 +26,7 @@ class TestConfig(Config):
 
 
 class DevelopmentConfig(Config):
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://kiwi_local:kiwilocaldb@localhost:3306/kiwilocal'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI')
     COGNITO_REGION = os.environ.get('COGNITO_REGION')
     COGNITO_USER_POOL_ID = os.environ.get('COGNITO_USER_POOL_ID')
     COGNITO_APP_CLIENT_ID = os.environ.get('COGNITO_APP_CLIENT_ID')
