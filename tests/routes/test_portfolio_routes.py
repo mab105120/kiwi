@@ -1,9 +1,38 @@
 import datetime
 
+import pytest
+
 import app.service.portfolio_service as portfolio_service
 import app.service.transaction_service as transaction_service
 import app.service.user_service as user_service
 from app.models import Portfolio, Transaction, User
+
+# =============================================================================
+# FIXTURES - Module-specific test data
+# =============================================================================
+
+
+@pytest.fixture(scope='function')
+def test_user_with_portfolio(db_session):
+    user = User(
+        username='securitytestuser',
+        firstname='Security',
+        lastname='Tester',
+        balance=10000.00,
+    )
+    db_session.add(user)
+    db_session.flush()
+
+    portfolio = Portfolio(
+        name='Test Security Portfolio',
+        description='Portfolio for testing security purchases',
+        user=user,
+    )
+    db_session.add(portfolio)
+    db_session.flush()
+
+    return {'user': user, 'portfolio': portfolio, 'initial_balance': 10000.00}
+
 
 # =============================================================================
 # UNIT TESTS - Mocked service calls
@@ -276,6 +305,78 @@ def test_liquidate_investment_insufficient_quantity(client, monkeypatch):
     assert 'request_id' in data
 
 
+def test_execute_purchase_order_success(client, monkeypatch):
+    call_count = {'count': 0}
+
+    def mock_purchase(**kwargs):
+        call_count['count'] += 1
+
+    monkeypatch.setattr(portfolio_service, 'execute_purchase_order', mock_purchase)
+
+    purchase_data = {'portfolio_id': 1, 'ticker': 'AAPL', 'quantity': 10}
+    response = client.post('/portfolios/purchase', json=purchase_data)
+    assert response.status_code == 201
+    data = response.get_json()
+    assert 'message' in data
+    assert call_count['count'] == 1
+
+
+def test_execute_purchase_order_portfolio_not_found(client, monkeypatch):
+    def mock_purchase(**_):
+        raise Exception('Portfolio not found')
+
+    monkeypatch.setattr(portfolio_service, 'execute_purchase_order', mock_purchase)
+
+    purchase_data = {'portfolio_id': 999, 'ticker': 'AAPL', 'quantity': 10}
+    response = client.post('/portfolios/purchase', json=purchase_data)
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
+
+
+def test_execute_purchase_order_security_not_found(client, monkeypatch):
+    def mock_purchase(**_):
+        raise Exception('Security not found')
+
+    monkeypatch.setattr(portfolio_service, 'execute_purchase_order', mock_purchase)
+
+    purchase_data = {'portfolio_id': 1, 'ticker': 'INVALID', 'quantity': 10}
+    response = client.post('/portfolios/purchase', json=purchase_data)
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
+
+
+def test_execute_purchase_order_insufficient_funds(client, monkeypatch):
+    def mock_purchase(**_):
+        raise portfolio_service.InsufficientFundsError('Insufficient funds')
+
+    monkeypatch.setattr(portfolio_service, 'execute_purchase_order', mock_purchase)
+
+    purchase_data = {'portfolio_id': 1, 'ticker': 'AAPL', 'quantity': 1000}
+    response = client.post('/portfolios/purchase', json=purchase_data)
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
+
+
+def test_execute_purchase_order_service_error(client, monkeypatch):
+    def mock_purchase(**_):
+        raise Exception('Database error')
+
+    monkeypatch.setattr(portfolio_service, 'execute_purchase_order', mock_purchase)
+
+    purchase_data = {'portfolio_id': 1, 'ticker': 'AAPL', 'quantity': 10}
+    response = client.post('/securities/purchase', json=purchase_data)
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
+
+
 # =============================================================================
 # INPUT VALIDATION TESTS - Pydantic schema validation
 # =============================================================================
@@ -413,6 +514,88 @@ def test_liquidate_investment_negative_quantity(client):
 def test_liquidate_investment_invalid_types(client):
     invalid_data = {'ticker': 'AAPL', 'quantity': 'ten'}
     response = client.post('/portfolios/1/liquidate/', json=invalid_data)
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'error_msg' in data
+
+
+def test_purchase_missing_portfolio_id(client):
+    incomplete_data = {'ticker': 'AAPL', 'quantity': 10}
+    response = client.post('/portfolios/purchase', json=incomplete_data)
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
+
+
+def test_purchase_missing_ticker(client):
+    incomplete_data = {'portfolio_id': 1, 'quantity': 10}
+    response = client.post('/portfolios/purchase', json=incomplete_data)
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'error_msg' in data
+
+
+def test_purchase_missing_quantity(client):
+    incomplete_data = {'portfolio_id': 1, 'ticker': 'AAPL'}
+    response = client.post('/portfolios/purchase', json=incomplete_data)
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'error_msg' in data
+
+
+def test_purchase_zero_portfolio_id(client):
+    invalid_data = {'portfolio_id': 0, 'ticker': 'AAPL', 'quantity': 10}
+    response = client.post('/portfolios/purchase', json=invalid_data)
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'error_msg' in data
+
+
+def test_purchase_negative_portfolio_id(client):
+    invalid_data = {'portfolio_id': -1, 'ticker': 'AAPL', 'quantity': 10}
+    response = client.post('/portfolios/purchase', json=invalid_data)
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'error_msg' in data
+
+
+def test_purchase_empty_ticker(client):
+    invalid_data = {'portfolio_id': 1, 'ticker': '', 'quantity': 10}
+    response = client.post('/portfolios/purchase', json=invalid_data)
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'error_msg' in data
+
+
+def test_purchase_ticker_too_long(client):
+    long_ticker = 'A' * 11
+    invalid_data = {'portfolio_id': 1, 'ticker': long_ticker, 'quantity': 10}
+    response = client.post('/portfolios/purchase', json=invalid_data)
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'error_msg' in data
+
+
+def test_purchase_zero_quantity(client):
+    invalid_data = {'portfolio_id': 1, 'ticker': 'AAPL', 'quantity': 0}
+    response = client.post('/portfolios/purchase', json=invalid_data)
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'error_msg' in data
+
+
+def test_purchase_negative_quantity(client):
+    invalid_data = {'portfolio_id': 1, 'ticker': 'AAPL', 'quantity': -10}
+    response = client.post('/portfolios/purchase', json=invalid_data)
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'error_msg' in data
+
+
+def test_purchase_invalid_field_types(client):
+    invalid_data = {'portfolio_id': 'invalid', 'ticker': 123, 'quantity': 'ten'}
+    response = client.post('/portfolios/purchase', json=invalid_data)
     assert response.status_code == 400
     data = response.get_json()
     assert 'error_msg' in data
@@ -611,3 +794,33 @@ def test_get_portfolio_transactions_exception_handler(client, monkeypatch):
     data = response.get_json()
     assert 'error_msg' in data
     assert 'request_id' in data
+
+
+def test_execute_purchase_order_integration(client, test_user_with_portfolio, db_session, mock_alpha_vantage):
+    """Integration test: Execute full purchase workflow and verify balance update."""
+    fixture_data = test_user_with_portfolio
+    user = fixture_data['user']
+    portfolio = fixture_data['portfolio']
+    initial_balance = fixture_data['initial_balance']
+
+    purchase_data = {'portfolio_id': portfolio.id, 'ticker': 'AAPL', 'quantity': 10}
+    response = client.post('/portfolios/purchase', json=purchase_data)
+    assert response.status_code == 201
+    data = response.get_json()
+    assert 'message' in data
+
+    expected_cost = 150.00 * 10
+    expected_balance = initial_balance - expected_cost
+
+    db_session.expire_all()
+    user_from_db = db_session.query(User).filter_by(username=user.username).first()
+    assert user_from_db is not None
+    assert user_from_db.balance == expected_balance
+    assert user_from_db.balance == 8500.00
+
+    portfolio_from_db = db_session.query(Portfolio).filter_by(id=portfolio.id).first()
+    assert portfolio_from_db is not None
+    assert len(portfolio_from_db.investments) == 1
+    investment = portfolio_from_db.investments[0]
+    assert investment.ticker == 'AAPL'
+    assert investment.quantity == 10
