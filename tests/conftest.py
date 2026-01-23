@@ -76,7 +76,6 @@ def db_session(app, monkeypatch) -> Generator[scoped_session[Session], None, Non
         test_session.__setattr__('tag', 'test_session')
 
         def mock_commit():
-            print('Mocking commit. Replacing with flush')
             test_session.flush()
 
         monkeypatch.setattr(db, 'session', test_session, raising=True)

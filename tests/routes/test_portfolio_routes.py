@@ -549,3 +549,65 @@ def test_get_portfolio_transactions_with_data(client, monkeypatch):
     assert data[0]['transaction_id'] == 10
     assert data[0]['ticker'] == 'AAPL'
     assert data[0]['transaction_type'] == 'BUY'
+
+
+def test_get_all_portfolios_exception_handler(client, monkeypatch):
+    """Test exception handler in get_all_portfolios endpoint."""
+
+    def mock_get_all():
+        raise Exception('Database connection error')
+
+    monkeypatch.setattr(portfolio_service, 'get_all_portfolios', mock_get_all)
+
+    response = client.get('/portfolios/')
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
+
+
+def test_get_portfolio_exception_handler(client, monkeypatch):
+    """Test exception handler in get_portfolio endpoint."""
+
+    def mock_get_portfolio(_):
+        raise Exception('Database query error')
+
+    monkeypatch.setattr(portfolio_service, 'get_portfolio_by_id', mock_get_portfolio)
+
+    response = client.get('/portfolios/1')
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
+
+
+def test_get_portfolios_by_user_exception_handler(client, monkeypatch):
+    """Test exception handler in get_portfolios_by_user endpoint."""
+    mock_user = User(username='testuser', firstname='Test', lastname='User', balance=1000.0)
+
+    def mock_get_portfolios(_):
+        raise Exception('Query failed')
+
+    monkeypatch.setattr(user_service, 'get_user_by_username', lambda _: mock_user)
+    monkeypatch.setattr(portfolio_service, 'get_portfolios_by_user', mock_get_portfolios)
+
+    response = client.get('/portfolios/user/testuser')
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
+
+
+def test_get_portfolio_transactions_exception_handler(client, monkeypatch):
+    """Test exception handler in get_portfolio_transactions endpoint."""
+
+    def mock_get_transactions(_):
+        raise Exception('Transaction query failed')
+
+    monkeypatch.setattr(transaction_service, 'get_transactions_by_portfolio_id', mock_get_transactions)
+
+    response = client.get('/portfolios/1/transactions')
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data

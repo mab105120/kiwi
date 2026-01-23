@@ -1,5 +1,6 @@
 import pytest
 
+from app import db
 from app.models import Portfolio, User
 from app.service import transaction_service
 from app.service.portfolio_service import create_portfolio
@@ -56,6 +57,20 @@ def test_get_security_by_ticker_api_error(db_session, monkeypatch):
     with pytest.raises(SecurityException) as e:
         get_security_by_ticker('AAPL')
     assert 'Failed to retrieve security' in str(e.value)
+
+
+def test_get_security_by_ticker_generic_exception(db_session, monkeypatch):
+    """Test handling of generic exceptions from API"""
+    from app.service import alpha_vantage_client
+
+    def mock_unexpected_error(_):
+        raise RuntimeError('Unexpected error occurred')
+
+    monkeypatch.setattr(alpha_vantage_client, 'get_quote', mock_unexpected_error)
+
+    with pytest.raises(SecurityException) as e:
+        get_security_by_ticker('AAPL')
+    assert 'Failed to retrieve security due to error: Unexpected error occurred' in str(e.value)
 
 
 def test_execute_purchase_order_success(setup, db_session, mock_alpha_vantage):
@@ -147,3 +162,29 @@ def test_execute_purchase_order_invalid_parameters(setup, db_session, mock_alpha
     with pytest.raises(SecurityException) as e:
         execute_purchase_order(portfolio.id, 'AAPL', -5)
     assert 'Invalid purchase order parameters' in str(e.value)
+
+
+def test_execute_purchase_order_portfolio_without_user(setup, app, db_session, mock_alpha_vantage, monkeypatch):
+    """Test purchase order fails when portfolio has no associated user"""
+    portfolio = setup['portfolio']
+
+    # Mock the query to return a portfolio without a user
+    def mock_query_portfolio(_):
+        class MockQuery:
+            def filter_by(self, **kwargs):
+                return self
+
+            def one_or_none(self):
+                mock_portfolio = Portfolio(name='Orphan Portfolio', description='No user')
+                mock_portfolio.id = portfolio.id
+                mock_portfolio.user = None  # type: ignore
+                mock_portfolio.investments = []
+                return mock_portfolio
+
+        return MockQuery()
+
+    monkeypatch.setattr(db.session, 'query', mock_query_portfolio)
+
+    with pytest.raises(SecurityException) as e:
+        execute_purchase_order(portfolio.id, 'AAPL', 5)
+    assert f'User associated with the portfolio ({portfolio.id}) does not exist' in str(e.value)

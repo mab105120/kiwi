@@ -73,6 +73,13 @@ def test_delete_admin_user_raises(db_session):
     assert str(e.value) == 'Cannot delete admin user'
 
 
+def test_delete_user_empty_username_raises(db_session):
+    """Test delete_user raises error when username is empty."""
+    with pytest.raises(user_service.UnsupportedUserOperationError) as e:
+        user_service.delete_user('')
+    assert str(e.value) == 'Username cannot be empty'
+
+
 def test_delete_nonexistent_user_raises(db_session):
     with pytest.raises(user_service.UnsupportedUserOperationError) as e:
         user_service.delete_user('nonexistent_user')

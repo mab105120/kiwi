@@ -1,5 +1,4 @@
 import pytest
-import requests
 
 from app.service.alpha_vantage_client import AlphaVantageError, get_company_name, get_price_data, get_quote
 
@@ -44,11 +43,9 @@ def test_get_company_name_cache_success(app, monkeypatch):
 def test_missing_api_key(app, monkeypatch):
     monkeypatch.setitem(app.config, 'ALPHA_VANTAGE_API_KEY', None)
 
-    try:
+    with pytest.raises(AlphaVantageError) as exc_info:
         get_company_name('AAPL')
-    except Exception as e:
-        assert isinstance(e, Exception)
-        assert str(e) == 'API key not configured'
+    assert str(exc_info.value) == 'API key not configured'
 
 
 def test_rate_limit_exceeded(app, mock_alpha_vantage_response, monkeypatch):
@@ -178,3 +175,96 @@ def test_get_quote_success(app, mock_alpha_vantage_response, monkeypatch):
     assert quote.issuer == 'Apple Inc.'
     assert quote.price == 150.00
     assert quote.date == '2026-01-08'
+
+
+def test_get_price_data_zero_price(app, mock_alpha_vantage_response, monkeypatch):
+    from app import cache
+
+    cache.delete('price_data:MSFT')
+
+    def mock_requests_get(*_, **__):
+        return mock_alpha_vantage_response(
+            {
+                'Global Quote': {
+                    '01. symbol': 'MSFT',
+                    '05. price': '0',
+                    '07. latest trading day': '2026-01-15',
+                }
+            }
+        )
+
+    monkeypatch.setattr('app.service.alpha_vantage_client.requests.get', mock_requests_get)
+
+    with pytest.raises(AlphaVantageError) as exc_info:
+        get_price_data('MSFT')
+    assert 'Invalid price data for MSFT' in str(exc_info.value)
+
+
+def test_get_quote_company_name_not_found(app, mock_alpha_vantage_response, monkeypatch):
+    def mock_requests_get(*_, **__):
+        return mock_alpha_vantage_response({'bestMatches': []})
+
+    monkeypatch.setattr('app.service.alpha_vantage_client.requests.get', mock_requests_get)
+
+    with pytest.raises(AlphaVantageError) as exc_info:
+        get_quote('INVALID')
+    assert 'Ticker INVALID not found' in str(exc_info.value)
+
+
+def test_get_quote_price_data_not_found(app, mock_alpha_vantage_response, monkeypatch):
+    def mock_requests_get(*_, **kwargs):
+        if "'function': 'SYMBOL_SEARCH'" in str(kwargs.get('params', '')):
+            return mock_alpha_vantage_response(
+                {
+                    'bestMatches': [
+                        {
+                            '1. symbol': 'TEST',
+                            '2. name': 'Test Company',
+                        }
+                    ]
+                }
+            )
+        elif "'function': 'GLOBAL_QUOTE'" in str(kwargs.get('params', '')):
+            return mock_alpha_vantage_response({'Global Quote': {}})
+        return None
+
+    monkeypatch.setattr('app.service.alpha_vantage_client.requests.get', mock_requests_get)
+
+    with pytest.raises(AlphaVantageError) as exc_info:
+        get_quote('TEST')
+    assert 'No quote data available for TEST' in str(exc_info.value)
+
+
+def test_get_quote_unexpected_exception(app, monkeypatch):
+    def mock_get_company_name(ticker):
+        raise RuntimeError('Unexpected error')
+
+    monkeypatch.setattr('app.service.alpha_vantage_client.get_company_name', mock_get_company_name)
+
+    with pytest.raises(AlphaVantageError) as exc_info:
+        get_quote('AAPL')
+    assert 'Failed to fetch quote' in str(exc_info.value)
+
+
+def test_get_quote_company_name_returns_none(app, monkeypatch):
+    def mock_get_company_name(ticker):
+        return None
+
+    monkeypatch.setattr('app.service.alpha_vantage_client.get_company_name', mock_get_company_name)
+
+    result = get_quote('AAPL')
+    assert result is None
+
+
+def test_get_quote_price_data_returns_none(app, monkeypatch):
+    def mock_get_company_name(ticker):
+        return 'Apple Inc.'
+
+    def mock_get_price_data(ticker):
+        return None
+
+    monkeypatch.setattr('app.service.alpha_vantage_client.get_company_name', mock_get_company_name)
+    monkeypatch.setattr('app.service.alpha_vantage_client.get_price_data', mock_get_price_data)
+
+    result = get_quote('AAPL')
+    assert result is None

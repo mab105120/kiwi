@@ -41,13 +41,10 @@ def create_app(config):
         # configure logging
         with app.app_context():
             if not app.testing:
-                print('configuring logging')
                 app.logger.handlers.clear()
                 if app.debug or app.testing:
-                    print('setting log output to console')
                     handler = logging.StreamHandler(sys.stdout)
                 else:
-                    print('setting log output to file')
                     handler = RotatingFileHandler('app.log', maxBytes=100000, backupCount=10)
                 handler.setLevel(logging.INFO)
                 formatter = logging.Formatter(
@@ -56,7 +53,7 @@ def create_app(config):
                 handler.setFormatter(formatter)
                 handler.addFilter(RequestIdFilter())
                 app.logger.addHandler(handler)
-                app.logger.setLevel(logging.INFO)
+                app.logger.setLevel(logging.DEBUG if app.debug else logging.INFO)
                 app.logger.info('Starting app..')
 
         @app.before_request

@@ -339,3 +339,33 @@ def test_get_security_transactions_with_data(client, monkeypatch):
     assert isinstance(data[0]['quantity'], int)
     assert data[0]['price'] == 300.0
     assert data[0]['quantity'] == 15
+
+
+def test_get_security_exception_handler(client, monkeypatch):
+    """Test exception handler in get_security endpoint."""
+
+    def mock_get_security(_):
+        raise Exception('API connection error')
+
+    monkeypatch.setattr(security_service, 'get_security_by_ticker', mock_get_security)
+
+    response = client.get('/securities/AAPL')
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
+
+
+def test_get_security_transactions_exception_handler(client, monkeypatch):
+    """Test exception handler in get_security_transactions endpoint."""
+
+    def mock_get_transactions(_):
+        raise Exception('Transaction query failed')
+
+    monkeypatch.setattr(transaction_service, 'get_transactions_by_ticker', mock_get_transactions)
+
+    response = client.get('/securities/AAPL/transactions')
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
