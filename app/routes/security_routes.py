@@ -1,9 +1,7 @@
-from flask import Blueprint, current_app, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify
 
-import app.routes.domain.request_schema as request_schema
 import app.service.security_service as security_service
 import app.service.transaction_service as transaction_service
-from app.db import db
 from app.routes.domain import ErrorResponse
 
 security_bp = Blueprint('security', __name__)
@@ -35,41 +33,12 @@ def get_security(ticker):
         raise
 
 
-@security_bp.route('/purchase', methods=['POST'])
-def execute_purchase_order():
-    purchase_request = request_schema.ExecutePurchaseOrderRequest(**request.get_json())
-    current_app.logger.info(
-        f'Executing purchase order: {purchase_request.quantity} shares of {purchase_request.ticker} '
-        f'for portfolio {purchase_request.portfolio_id}'
-    )
-    try:
-        security_service.execute_purchase_order(
-            portfolio_id=purchase_request.portfolio_id,
-            ticker=purchase_request.ticker,
-            quantity=purchase_request.quantity,
-        )
-        db.session.commit()
-        current_app.logger.info(
-            f'Successfully executed purchase order: {purchase_request.quantity} shares of {purchase_request.ticker} '
-            f'for portfolio {purchase_request.portfolio_id}'
-        )
-        return jsonify({'message': 'Purchase order executed successfully'}), 201
-    except Exception as e:
-        current_app.logger.error(
-            f'Failed to execute purchase order for {purchase_request.quantity} shares of {purchase_request.ticker} '
-            f'in portfolio {purchase_request.portfolio_id}: {str(e)}'
-        )
-        raise
-
-
 @security_bp.route('/<ticker>/transactions', methods=['GET'])
 def get_security_transactions(ticker):
     current_app.logger.info(f'Retrieving transactions for security: {ticker}')
     try:
         transactions = transaction_service.get_transactions_by_ticker(ticker)
-        current_app.logger.debug(
-            f'Successfully retrieved {len(transactions)} transactions for security: {ticker}'
-        )
+        current_app.logger.debug(f'Successfully retrieved {len(transactions)} transactions for security: {ticker}')
         return jsonify([transaction.__to_dict__() for transaction in transactions]), 200
     except Exception as e:
         current_app.logger.error(f'Failed to retrieve transactions for security {ticker}: {str(e)}')

@@ -135,6 +135,33 @@ def liquidate_investment(portfolio_id):
         raise
 
 
+@portfolio_bp.route('/purchase', methods=['POST'])
+def execute_purchase_order():
+    purchase_request = request_schema.ExecutePurchaseOrderRequest(**request.get_json())
+    current_app.logger.info(
+        f'Executing purchase order: {purchase_request.quantity} shares of {purchase_request.ticker} '
+        f'for portfolio {purchase_request.portfolio_id}'
+    )
+    try:
+        portfolio_service.execute_purchase_order(
+            portfolio_id=purchase_request.portfolio_id,
+            ticker=purchase_request.ticker,
+            quantity=purchase_request.quantity,
+        )
+        db.session.commit()
+        current_app.logger.info(
+            f'Successfully executed purchase order: {purchase_request.quantity} shares of {purchase_request.ticker} '
+            f'for portfolio {purchase_request.portfolio_id}'
+        )
+        return jsonify({'message': 'Purchase order executed successfully'}), 201
+    except Exception as e:
+        current_app.logger.error(
+            f'Failed to execute purchase order for {purchase_request.quantity} shares of {purchase_request.ticker} '
+            f'in portfolio {purchase_request.portfolio_id}: {str(e)}'
+        )
+        raise
+
+
 @portfolio_bp.route('/<int:portfolio_id>/transactions', methods=['GET'])
 def get_portfolio_transactions(portfolio_id):
     current_app.logger.info(f'Retrieving transactions for portfolio: {portfolio_id}')
