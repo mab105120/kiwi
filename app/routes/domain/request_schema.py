@@ -3,7 +3,6 @@ from pydantic import BaseModel, Field
 
 class CreateUserRequest(BaseModel):
     username: str = Field(min_length=1, max_length=30, description='Unique username for the user')
-    password: str = Field(min_length=6, description='Password for the user account')
     firstname: str = Field(min_length=1, max_length=30, description='First name of the user')
     lastname: str = Field(min_length=1, max_length=30, description='Last name of the user')
     balance: float = Field(ge=0.0, description='Initial balance for the user account', default=0.0)

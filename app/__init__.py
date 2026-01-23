@@ -15,6 +15,7 @@ from app.db import db
 from app.log.RequestIdFilter import RequestIdFilter
 from app.routes import portfolio_bp, security_bp, user_bp
 from app.routes.domain import ErrorResponse
+from app.service import cognito_client, user_service
 
 # Initialize Flask-Caching
 cache = Cache()
@@ -49,7 +50,9 @@ def create_app(config):
                     print('setting log output to file')
                     handler = RotatingFileHandler('app.log', maxBytes=100000, backupCount=10)
                 handler.setLevel(logging.INFO)
-                formatter = logging.Formatter('%(asctime)s [%(request_id)s] %(levelname)s: %(message)s')
+                formatter = logging.Formatter(
+                    '%(asctime)s [%(request_id)s] %(levelname)s: %(message)s (in %(module)s:%(lineno)d)'
+                )
                 handler.setFormatter(formatter)
                 handler.addFilter(RequestIdFilter())
                 app.logger.addHandler(handler)
@@ -98,6 +101,32 @@ def create_app(config):
                     request_id=g.request_id,
                 )
                 return jsonify(error.model_dump()), 401
+
+            # create user if first time request
+            if cache.get('pre_request_all_users') is None:
+                users = user_service.get_all_users()
+                cache.set('pre_request_all_users', users, timeout=60)
+            users = cache.get('pre_request_all_users')
+            caller_username = g.user['username']
+            caller_user = next((u for u in users if u.username == caller_username), None)
+            try:
+                if not caller_user:
+                    user_info = cognito_client.get_user_info(token)
+                    firstname = user_info['attributes'].get('given_name', None)
+                    lastname = user_info['attributes'].get('family_name', None)
+                    app.logger.info(f'Creating new user record for {caller_username}')
+                    user_service.create_user(
+                        username=caller_username,
+                        firstname=firstname,
+                        lastname=lastname,
+                        balance=0.00,
+                    )
+                    db.session.commit()
+                    app.logger.info('Refreshing cache')
+                    users = user_service.get_all_users()
+                    cache.set('all_users', users, timeout=60)
+            except Exception as e:
+                app.logger.error(f'Error creating user: {str(e)}')
 
         @app.after_request
         def after_request(response):

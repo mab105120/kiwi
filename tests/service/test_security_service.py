@@ -4,7 +4,6 @@ from app.models import Portfolio, User
 from app.service import transaction_service
 from app.service.portfolio_service import create_portfolio
 from app.service.security_service import (
-    InsufficientFundsError,
     SecurityException,
     execute_purchase_order,
     get_security_by_ticker,
@@ -16,7 +15,6 @@ from app.service.user_service import create_user
 def setup(db_session):
     create_user(
         username='user',
-        password='secret',
         firstname='Firstname',
         lastname='Lastname',
         balance=1000.00,

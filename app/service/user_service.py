@@ -44,12 +44,11 @@ def update_user_balance(username: str, new_balance: float):
         raise UnsupportedUserOperationError(f'Failed to update user balance due to error: {str(e)}')
 
 
-def create_user(username: str, password: str, firstname: str, lastname: str, balance: float):
+def create_user(username: str, firstname: str, lastname: str, balance: float):
     try:
         db.session.add(
             User(
                 username=username,
-                password=password,
                 firstname=firstname,
                 lastname=lastname,
                 balance=balance,
