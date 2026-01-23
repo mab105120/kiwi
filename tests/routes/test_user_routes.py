@@ -370,3 +370,48 @@ def test_get_user_transactions_with_data(client, monkeypatch):
     assert data[1]['username'] == 'testuser'
     assert data[1]['ticker'] == 'GOOGL'
     assert data[1]['transaction_type'] == 'SELL'
+
+
+def test_get_users_exception_handler(client, monkeypatch):
+    """Test exception handler in get_users endpoint."""
+
+    def mock_get_all():
+        raise Exception('Database connection error')
+
+    monkeypatch.setattr(user_service, 'get_all_users', mock_get_all)
+
+    response = client.get('/users/')
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
+
+
+def test_get_user_exception_handler(client, monkeypatch):
+    """Test exception handler in get_user endpoint."""
+
+    def mock_get_user(_):
+        raise Exception('Database query error')
+
+    monkeypatch.setattr(user_service, 'get_user_by_username', mock_get_user)
+
+    response = client.get('/users/testuser')
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data
+
+
+def test_get_user_transactions_exception_handler(client, monkeypatch):
+    """Test exception handler in get_user_transactions endpoint."""
+
+    def mock_get_transactions(_):
+        raise Exception('Transaction query failed')
+
+    monkeypatch.setattr(transaction_service, 'get_transactions_by_user', mock_get_transactions)
+
+    response = client.get('/users/testuser/transactions')
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error_msg' in data
+    assert 'request_id' in data

@@ -64,3 +64,36 @@ def test_get_transactions_by_ticker(setup, db_session):
     transactions = transaction_service.get_transactions_by_ticker('AAPL')
     assert len(transactions) == 1
     assert transactions[0].ticker == 'AAPL'
+
+
+def test_get_transactions_by_user_exception(db_session, monkeypatch):
+    def mock_query(*args, **kwargs):
+        raise Exception('Database error')
+
+    monkeypatch.setattr(db_session, 'query', mock_query)
+
+    with pytest.raises(Exception) as exc_info:
+        transaction_service.get_transactions_by_user('testuser')
+    assert 'Database error' in str(exc_info.value)
+
+
+def test_get_transactions_by_portfolio_id_exception(db_session, monkeypatch):
+    def mock_query(*args, **kwargs):
+        raise Exception('Database error')
+
+    monkeypatch.setattr(db_session, 'query', mock_query)
+
+    with pytest.raises(Exception) as exc_info:
+        transaction_service.get_transactions_by_portfolio_id(1)
+    assert 'Database error' in str(exc_info.value)
+
+
+def test_get_transactions_by_ticker_exception(db_session, monkeypatch):
+    def mock_query(*args, **kwargs):
+        raise Exception('Database error')
+
+    monkeypatch.setattr(db_session, 'query', mock_query)
+
+    with pytest.raises(Exception) as exc_info:
+        transaction_service.get_transactions_by_ticker('AAPL')
+    assert 'Database error' in str(exc_info.value)

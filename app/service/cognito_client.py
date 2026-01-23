@@ -10,6 +10,7 @@ class CognitoClientError(Exception):
 
 def get_user_info(access_token):
     try:
+        current_app.logger.info('Fetching user info from Cognito')
         region = current_app.config.get('COGNITO_REGION')
         url = f'https://cognito-idp.{region}.amazonaws.com/'
         headers = {
@@ -20,8 +21,9 @@ def get_user_info(access_token):
         response = requests.post(url, headers=headers, data=json.dumps(payload))
         data = response.json()
         attributes = {attr['Name']: attr['Value'] for attr in data['UserAttributes']}
-
-        return {'username': data['Username'], 'attributes': attributes}
+        username = data['Username']
+        current_app.logger.debug(f'Successfully fetched user info for: {username}')
+        return {'username': username, 'attributes': attributes}
     except Exception as e:
         current_app.logger.error(f'Error fetching user info: {str(e)}')
         raise CognitoClientError(f'Failed to fetch user info due to error: {str(e)}')

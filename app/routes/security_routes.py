@@ -1,4 +1,4 @@
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 
 import app.routes.domain.request_schema as request_schema
 import app.service.security_service as security_service
@@ -11,36 +11,66 @@ security_bp = Blueprint('security', __name__)
 
 @security_bp.route('/<ticker>', methods=['GET'])
 def get_security(ticker):
-    security_quote = security_service.get_security_by_ticker(ticker)
-    if security_quote is None:
-        error = ErrorResponse(
-            error_msg=f'Security {ticker} not found or market data unavailable',
-            request_id=g.get('request_id', 'N/A'),
-        )
-        return jsonify(error.model_dump()), 404
-    return jsonify(
-        {
-            'ticker': security_quote.ticker,
-            'issuer': security_quote.issuer,
-            'price': security_quote.price,
-            'date': security_quote.date,
-        }
-    ), 200
+    current_app.logger.info(f'Retrieving security: {ticker}')
+    try:
+        security_quote = security_service.get_security_by_ticker(ticker)
+        if security_quote is None:
+            current_app.logger.warning(f'Security not found or market data unavailable: {ticker}')
+            error = ErrorResponse(
+                error_msg=f'Security {ticker} not found or market data unavailable',
+                request_id=g.get('request_id', 'N/A'),
+            )
+            return jsonify(error.model_dump()), 404
+        current_app.logger.debug(f'Successfully retrieved security: {ticker}, price: ${security_quote.price}')
+        return jsonify(
+            {
+                'ticker': security_quote.ticker,
+                'issuer': security_quote.issuer,
+                'price': security_quote.price,
+                'date': security_quote.date,
+            }
+        ), 200
+    except Exception as e:
+        current_app.logger.error(f'Failed to retrieve security {ticker}: {str(e)}')
+        raise
 
 
 @security_bp.route('/purchase', methods=['POST'])
 def execute_purchase_order():
     purchase_request = request_schema.ExecutePurchaseOrderRequest(**request.get_json())
-    security_service.execute_purchase_order(
-        portfolio_id=purchase_request.portfolio_id,
-        ticker=purchase_request.ticker,
-        quantity=purchase_request.quantity,
+    current_app.logger.info(
+        f'Executing purchase order: {purchase_request.quantity} shares of {purchase_request.ticker} '
+        f'for portfolio {purchase_request.portfolio_id}'
     )
-    db.session.commit()
-    return jsonify({'message': 'Purchase order executed successfully'}), 201
+    try:
+        security_service.execute_purchase_order(
+            portfolio_id=purchase_request.portfolio_id,
+            ticker=purchase_request.ticker,
+            quantity=purchase_request.quantity,
+        )
+        db.session.commit()
+        current_app.logger.info(
+            f'Successfully executed purchase order: {purchase_request.quantity} shares of {purchase_request.ticker} '
+            f'for portfolio {purchase_request.portfolio_id}'
+        )
+        return jsonify({'message': 'Purchase order executed successfully'}), 201
+    except Exception as e:
+        current_app.logger.error(
+            f'Failed to execute purchase order for {purchase_request.quantity} shares of {purchase_request.ticker} '
+            f'in portfolio {purchase_request.portfolio_id}: {str(e)}'
+        )
+        raise
 
 
 @security_bp.route('/<ticker>/transactions', methods=['GET'])
 def get_security_transactions(ticker):
-    transactions = transaction_service.get_transactions_by_ticker(ticker)
-    return jsonify([transaction.__to_dict__() for transaction in transactions]), 200
+    current_app.logger.info(f'Retrieving transactions for security: {ticker}')
+    try:
+        transactions = transaction_service.get_transactions_by_ticker(ticker)
+        current_app.logger.debug(
+            f'Successfully retrieved {len(transactions)} transactions for security: {ticker}'
+        )
+        return jsonify([transaction.__to_dict__() for transaction in transactions]), 200
+    except Exception as e:
+        current_app.logger.error(f'Failed to retrieve transactions for security {ticker}: {str(e)}')
+        raise

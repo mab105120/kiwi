@@ -1,4 +1,5 @@
 import logging
+
 from flask import g
 
 
@@ -8,5 +9,5 @@ class RequestIdFilter(logging.Filter):
     """
 
     def filter(self, record):
-        record.request_id = getattr(g, "request_id", "unknown")
+        record.request_id = getattr(g, 'request_id', 'unknown')
         return True

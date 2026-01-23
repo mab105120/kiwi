@@ -164,3 +164,16 @@ def test_liquidate_investment_insufficient_quantity(setup, db_session, mock_alph
     with pytest.raises(portfolio_service.PortfolioOperationError) as e:
         portfolio_service.liquidate_investment(portfolio.id, 'AAPL', 1000)
     assert 'Cannot liquidate 1000 shares of AAPL. Only 10 shares available in portfolio' in str(e.value)
+
+
+def test_liquidate_investment_quote_unavailable(setup, db_session, monkeypatch):
+    """Test liquidation fails when market data is unavailable."""
+    import app.service.alpha_vantage_client as alpha_vantage_client
+
+    # Mock get_quote to return None (API failure/unavailable)
+    monkeypatch.setattr(alpha_vantage_client, 'get_quote', lambda _: None)
+
+    portfolio = setup['portfolio1']
+    with pytest.raises(portfolio_service.PortfolioOperationError) as e:
+        portfolio_service.liquidate_investment(portfolio.id, 'AAPL', 5)
+    assert 'Unable to fetch current price for AAPL from market data provider' in str(e.value)
