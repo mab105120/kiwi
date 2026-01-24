@@ -174,3 +174,74 @@ def get_portfolio_transactions(portfolio_id):
     except Exception as e:
         current_app.logger.error(f'Failed to retrieve transactions for portfolio {portfolio_id}: {str(e)}')
         raise
+
+
+@portfolio_bp.route('/<int:portfolio_id>/assign_security', methods=['POST'])
+def assign_portfolio_security_route(portfolio_id):
+    assign_request = request_schema.AssignPortfolioSecurityRequest(**request.get_json())
+    current_app.logger.info(
+        f'Assigning security to portfolio {portfolio_id}: '
+        f'username={assign_request.username}, role={assign_request.role}'
+    )
+    try:
+        portfolio_service.assign_portfolio_security(
+            portfolio_id=portfolio_id,
+            username=assign_request.username,
+            role=assign_request.role,
+        )
+        db.session.commit()
+        current_app.logger.info(
+            f'Successfully assigned security to portfolio {portfolio_id}: '
+            f'username={assign_request.username}, role={assign_request.role}'
+        )
+        return jsonify({'message': 'Portfolio security assigned successfully'}), 200
+    except Exception as e:
+        current_app.logger.error(
+            f'Failed to assign security to portfolio {portfolio_id}: '
+            f'username={assign_request.username}, role={assign_request.role}, error={str(e)}'
+        )
+        raise
+
+
+@portfolio_bp.route('/<int:portfolio_id>/update_security', methods=['PUT'])
+def update_portfolio_security_route(portfolio_id):
+    update_request = request_schema.AssignPortfolioSecurityRequest(**request.get_json())
+    current_app.logger.info(
+        f'Updating security in portfolio {portfolio_id}: username={update_request.username}, role={update_request.role}'
+    )
+    try:
+        portfolio_service.change_portfolio_security_role(
+            portfolio_id=portfolio_id,
+            username=update_request.username,
+            new_role=update_request.role,
+        )
+        db.session.commit()
+        current_app.logger.info(
+            f'Successfully updated security in portfolio {portfolio_id}: '
+            f'username={update_request.username}, role={update_request.role}'
+        )
+        return jsonify({'message': 'Portfolio security updated successfully'}), 200
+    except Exception as e:
+        current_app.logger.error(
+            f'Failed to update security in portfolio {portfolio_id}: '
+            f'username={update_request.username}, role={update_request.role}, error={str(e)}'
+        )
+        raise
+
+
+@portfolio_bp.route('/<int:portfolio_id>/remove_security/<string:username>', methods=['DELETE'])
+def remove_portfolio_security_route(portfolio_id, username):
+    current_app.logger.info(f'Removing security from portfolio {portfolio_id}: username={username}')
+    try:
+        portfolio_service.remove_portfolio_security(
+            portfolio_id=portfolio_id,
+            username=username,
+        )
+        db.session.commit()
+        current_app.logger.info(f'Successfully removed security from portfolio {portfolio_id}: username={username}')
+        return jsonify({'message': 'Portfolio security removed successfully'}), 200
+    except Exception as e:
+        current_app.logger.error(
+            f'Failed to remove security from portfolio {portfolio_id}: username={username}, error={str(e)}'
+        )
+        raise

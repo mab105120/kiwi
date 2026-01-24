@@ -28,3 +28,14 @@ class ExecutePurchaseOrderRequest(BaseModel):
     portfolio_id: int = Field(gt=0, description='ID of the portfolio to purchase securities for')
     ticker: str = Field(min_length=1, max_length=10, description='Security ticker symbol')
     quantity: int = Field(gt=0, description='Number of shares to purchase')
+
+
+class AssignPortfolioSecurityRequest(BaseModel):
+    portfolio_id: int = Field(gt=0, description='ID of the portfolio')
+    username: str = Field(min_length=1, max_length=30, description='Username of the user to assign')
+    role: str = Field(min_length=1, max_length=30, description='Role of the user in the portfolio')
+
+
+class RemovePortfolioSecurityRequest(BaseModel):
+    portfolio_id: int = Field(gt=0, description='ID of the portfolio')
+    username: str = Field(min_length=1, max_length=30, description='Username of the user to remove')

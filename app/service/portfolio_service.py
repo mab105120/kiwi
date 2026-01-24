@@ -2,7 +2,7 @@ import datetime
 from typing import List
 
 from app.db import db
-from app.models import Investment, Portfolio, Transaction, User
+from app.models import Investment, Portfolio, PortfolioSecurity, Transaction, User
 from app.service import alpha_vantage_client
 
 
@@ -164,3 +164,56 @@ def liquidate_investment(portfolio_id: int, ticker: str, quantity: int):
     except Exception as e:
         db.session.rollback()
         raise PortfolioOperationError(f'Failed to liquidate investment: {str(e)}')
+
+
+def assign_portfolio_security(portfolio_id: int, username: str, role: str):
+    try:
+        portfolio = db.session.query(Portfolio).filter_by(id=portfolio_id).one_or_none()
+        if not portfolio:
+            raise PortfolioOperationError(f'Portfolio with id {portfolio_id} does not exist')
+        user = db.session.query(User).filter_by(username=username).one_or_none()
+        if not user:
+            raise PortfolioOperationError(f'User with username {username} does not exist')
+
+        portfolio_security = PortfolioSecurity(
+            portfolio_id=portfolio_id,
+            username=username,
+            role=role,
+        )
+        db.session.add(portfolio_security)
+        db.session.flush()
+    except Exception as e:
+        db.session.rollback()
+        raise PortfolioOperationError(f'Failed to assign portfolio security: {str(e)}')
+
+
+def change_portfolio_security_role(portfolio_id: int, username: str, new_role: str):
+    try:
+        portfolio_security = (
+            db.session.query(PortfolioSecurity).filter_by(portfolio_id=portfolio_id, username=username).one_or_none()
+        )
+        if not portfolio_security:
+            raise PortfolioOperationError(
+                f'PortfolioSecurity with portfolio_id {portfolio_id} and username {username} does not exist'
+            )
+        portfolio_security.role = new_role
+        db.session.flush()
+    except Exception as e:
+        db.session.rollback()
+        raise PortfolioOperationError(f'Failed to change portfolio security role: {str(e)}')
+
+
+def remove_portfolio_security(portfolio_id: int, username: str):
+    try:
+        portfolio_security = (
+            db.session.query(PortfolioSecurity).filter_by(portfolio_id=portfolio_id, username=username).one_or_none()
+        )
+        if not portfolio_security:
+            raise PortfolioOperationError(
+                f'PortfolioSecurity with portfolio_id {portfolio_id} and username {username} does not exist'
+            )
+        db.session.delete(portfolio_security)
+        db.session.flush()
+    except Exception as e:
+        db.session.rollback()
+        raise PortfolioOperationError(f'Failed to remove portfolio security: {str(e)}')
