@@ -1,7 +1,7 @@
 from functools import wraps
 from typing import Callable, List, Optional
 
-from flask import current_app, g, jsonify
+from flask import current_app, g, jsonify, request
 
 from app.db import db
 from app.models import Portfolio, PortfolioPermission
@@ -45,14 +45,22 @@ def require_self_access(username_param: str = 'username'):
 
     Args:
         username_param: The name of the route parameter or request body field containing the username.
-                       For URL parameters, it checks kwargs. For request body, it checks the parsed request.
+                       Checks URL path parameters first, then falls back to JSON request body.
     """
 
     def decorator(f: Callable) -> Callable:
         @wraps(f)
         def decorated_function(*args, **kwargs):
             authenticated_username = g.user.get('username')
+
+            # First try to get username from URL path parameters
             target_username = kwargs.get(username_param)
+
+            # If not found in path, try to get from JSON request body
+            if target_username is None:
+                json_data = request.get_json(silent=True)
+                if json_data and isinstance(json_data, dict):
+                    target_username = json_data.get(username_param)
 
             if target_username and target_username != authenticated_username:
                 current_app.logger.warning(
@@ -76,7 +84,8 @@ def require_portfolio_permission(portfolio_id_param: str = 'portfolio_id', allow
     Decorator that ensures the authenticated user has the required permission level for a portfolio.
 
     Args:
-        portfolio_id_param: The name of the route parameter containing the portfolio ID.
+        portfolio_id_param: The name of the route parameter or request body field containing the portfolio ID.
+                           Checks URL path parameters first, then falls back to JSON request body.
         allowed_levels: List of permission levels that are allowed (e.g., ['owner', 'manager', 'viewer']).
                        If None, defaults to ['owner', 'manager', 'viewer'] (any access).
     """
@@ -87,7 +96,15 @@ def require_portfolio_permission(portfolio_id_param: str = 'portfolio_id', allow
         @wraps(f)
         def decorated_function(*args, **kwargs):
             authenticated_username = g.user.get('username')
+
+            # First try to get portfolio_id from URL path parameters
             portfolio_id = kwargs.get(portfolio_id_param)
+
+            # If not found in path, try to get from JSON request body
+            if portfolio_id is None:
+                json_data = request.get_json(silent=True)
+                if json_data and isinstance(json_data, dict):
+                    portfolio_id = json_data.get(portfolio_id_param)
 
             if portfolio_id is None:
                 current_app.logger.warning('Authorization check failed: portfolio_id not found in request')
