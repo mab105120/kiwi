@@ -1,5 +1,3 @@
-import json
-
 import pytest
 
 from app.service.cognito_client import CognitoClientError, get_user_info

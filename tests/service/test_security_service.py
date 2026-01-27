@@ -1,8 +1,6 @@
 import pytest
 
-from app import db
 from app.models import Portfolio, User
-from app.service import transaction_service
 from app.service.portfolio_service import create_portfolio
 from app.service.security_service import (
     SecurityException,

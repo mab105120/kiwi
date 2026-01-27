@@ -1,6 +1,5 @@
 import pytest
 import requests
-from flask import g, jsonify
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 

@@ -23,6 +23,7 @@ class TestConfig(Config):
     COGNITO_REGION = ''
     COGNITO_USER_POOL_ID = ''
     COGNITO_APP_CLIENT_ID = ''
+    ALPHA_VANTAGE_API_KEY = 'DUMMY_API_KEY'
 
 
 class DevelopmentConfig(Config):

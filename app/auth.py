@@ -1,8 +1,7 @@
-from functools import wraps
 from typing import Dict, Optional
 
 import requests
-from flask import current_app, jsonify, request
+from flask import current_app, request
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 
