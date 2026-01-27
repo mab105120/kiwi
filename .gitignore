@@ -9,3 +9,4 @@ notes/
 app.*
 local/
 .ruff*
+.python-version
