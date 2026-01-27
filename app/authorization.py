@@ -83,6 +83,37 @@ def require_self_access(username_param: str = 'username'):
     return decorator
 
 
+def _convert_to_int(value, field_name: str):
+    """
+    Convert a value to an integer, returning the int or raising an error response tuple.
+
+    Args:
+        value: The value to convert (can be int, str, or other)
+        field_name: The name of the field for error messages
+
+    Returns:
+        tuple: (converted_int, None) on success, or (None, error_response_tuple) on failure
+    """
+    if value is None:
+        return None, None
+    if isinstance(value, int):
+        return value, None
+    if isinstance(value, str):
+        try:
+            return int(value), None
+        except ValueError:
+            error = ErrorResponse(
+                error_msg=f'Invalid {field_name} format: must be an integer',
+                request_id=g.get('request_id', 'N/A'),
+            )
+            return None, (jsonify(error.model_dump()), 400)
+    error = ErrorResponse(
+        error_msg=f'Invalid {field_name} format: must be an integer',
+        request_id=g.get('request_id', 'N/A'),
+    )
+    return None, (jsonify(error.model_dump()), 400)
+
+
 def require_portfolio_permission(portfolio_id_param: str = 'portfolio_id', allowed_levels: List[str] = None):
     """
     Decorator that ensures the authenticated user has the required permission level for a portfolio.
@@ -101,23 +132,28 @@ def require_portfolio_permission(portfolio_id_param: str = 'portfolio_id', allow
         def decorated_function(*args, **kwargs):
             authenticated_username = g.user.get('username')
 
-            # First try to get portfolio_id from URL path parameters
+            # First try to get portfolio_id from URL path parameters (already an int from Flask)
             portfolio_id = kwargs.get(portfolio_id_param)
 
             # If not found in path, try to get from query parameters
             if portfolio_id is None:
                 portfolio_id_str = request.args.get(portfolio_id_param)
                 if portfolio_id_str is not None:
-                    try:
-                        portfolio_id = int(portfolio_id_str)
-                    except ValueError:
-                        pass
+                    portfolio_id, error_response = _convert_to_int(portfolio_id_str, 'portfolio_id')
+                    if error_response:
+                        current_app.logger.warning(f'Invalid portfolio_id format in query params: {portfolio_id_str}')
+                        return error_response
 
             # If not found in query params, try to get from JSON request body
             if portfolio_id is None:
                 json_data = request.get_json(silent=True)
                 if json_data and isinstance(json_data, dict):
-                    portfolio_id = json_data.get(portfolio_id_param)
+                    raw_portfolio_id = json_data.get(portfolio_id_param)
+                    if raw_portfolio_id is not None:
+                        portfolio_id, error_response = _convert_to_int(raw_portfolio_id, 'portfolio_id')
+                        if error_response:
+                            current_app.logger.warning(f'Invalid portfolio_id format in JSON body: {raw_portfolio_id}')
+                            return error_response
 
             if portfolio_id is None:
                 current_app.logger.warning('Authorization check failed: portfolio_id not found in request')
