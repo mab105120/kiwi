@@ -45,7 +45,7 @@ def require_self_access(username_param: str = 'username'):
 
     Args:
         username_param: The name of the route parameter or request body field containing the username.
-                       Checks URL path parameters first, then falls back to JSON request body.
+                       Checks URL path parameters first, then query parameters, then JSON request body.
     """
 
     def decorator(f: Callable) -> Callable:
@@ -56,7 +56,11 @@ def require_self_access(username_param: str = 'username'):
             # First try to get username from URL path parameters
             target_username = kwargs.get(username_param)
 
-            # If not found in path, try to get from JSON request body
+            # If not found in path, try to get from query parameters
+            if target_username is None:
+                target_username = request.args.get(username_param)
+
+            # If not found in query params, try to get from JSON request body
             if target_username is None:
                 json_data = request.get_json(silent=True)
                 if json_data and isinstance(json_data, dict):
@@ -85,7 +89,7 @@ def require_portfolio_permission(portfolio_id_param: str = 'portfolio_id', allow
 
     Args:
         portfolio_id_param: The name of the route parameter or request body field containing the portfolio ID.
-                           Checks URL path parameters first, then falls back to JSON request body.
+                           Checks URL path parameters first, then query parameters, then JSON request body.
         allowed_levels: List of permission levels that are allowed (e.g., ['owner', 'manager', 'viewer']).
                        If None, defaults to ['owner', 'manager', 'viewer'] (any access).
     """
@@ -100,7 +104,16 @@ def require_portfolio_permission(portfolio_id_param: str = 'portfolio_id', allow
             # First try to get portfolio_id from URL path parameters
             portfolio_id = kwargs.get(portfolio_id_param)
 
-            # If not found in path, try to get from JSON request body
+            # If not found in path, try to get from query parameters
+            if portfolio_id is None:
+                portfolio_id_str = request.args.get(portfolio_id_param)
+                if portfolio_id_str is not None:
+                    try:
+                        portfolio_id = int(portfolio_id_str)
+                    except ValueError:
+                        pass
+
+            # If not found in query params, try to get from JSON request body
             if portfolio_id is None:
                 json_data = request.get_json(silent=True)
                 if json_data and isinstance(json_data, dict):
