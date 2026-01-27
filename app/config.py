@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+APP_VERSION = '1.0.0'
+
 
 class Config:
     SQLALCHEMY_ENGINE_OPTIONS = {
