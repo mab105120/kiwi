@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://contracts.internal/messages/grading-job.schema.json",
+  "title": "GradingJob",
+  "description": "SQS message payload sent by app-api and consumed by worker to request AI grading of a submission.",
+  "type": "object",
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "description": "Unique identifier for this grading job."
+    },
+    "jobType": {
+      "type": "string",
+      "enum": ["exam_grading", "assignment_grading"]
+    },
+    "submissionId": {
+      "type": "string"
+    },
+    "examId": {
+      "type": "string",
+      "description": "Present when jobType is exam_grading."
+    },
+    "assignmentId": {
+      "type": "string",
+      "description": "Present when jobType is assignment_grading."
+    },
+    "enqueuedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["jobId", "jobType", "submissionId", "enqueuedAt"],
+  "additionalProperties": false
+}

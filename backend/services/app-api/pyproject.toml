@@ -1,0 +1,19 @@
+[project]
+name = "app-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1",
+    "sqlalchemy",
+    "alembic",
+    "gunicorn",
+    "boto3",
+    "platform-common",
+]
+
+[tool.uv.sources]
+platform-common = { path = "../../libs/platform_common" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
