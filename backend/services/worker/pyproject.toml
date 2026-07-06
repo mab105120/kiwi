@@ -10,7 +10,10 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-platform-common = { path = "../../libs/platform_common" }
+platform-common = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
 
 [build-system]
 requires = ["hatchling"]

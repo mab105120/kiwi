@@ -2,7 +2,7 @@
 
 ## Backend
 
-- [ ] Add ruff + mypy dev dependencies to `backend/pyproject.toml`
+- [x] Add ruff + mypy dev dependencies to `backend/pyproject.toml`
 - [ ] Wire `make install` to `uv sync` across the backend workspace
 - [ ] Wire `make lint` to run ruff + mypy across backend packages
 - [ ] Wire `make test` to run pytest for `identity`, `app-api`, `worker`
