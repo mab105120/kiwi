@@ -1,0 +1,28 @@
+# Local development only. Real credentials in deployed environments come from
+# AWS Secrets Manager and are never committed here.
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: local-dev-only
+      MYSQL_DATABASE: platform
+      MYSQL_USER: platform
+      MYSQL_PASSWORD: local-dev-only
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  localstack:
+    image: localstack/localstack
+    environment:
+      SERVICES: sqs,s3
+      DEFAULT_REGION: us-east-1
+    ports:
+      - "4566:4566"
+    volumes:
+      - localstack-data:/var/lib/localstack
+
+volumes:
+  mysql-data:
+  localstack-data:

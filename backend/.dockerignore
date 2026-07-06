@@ -1,0 +1,8 @@
+services/*/tests
+services/*/.venv
+services/*/migrations/versions/*
+!services/*/migrations/versions/.gitkeep
+**/__pycache__
+**/*.pyc
+.venv
+.git

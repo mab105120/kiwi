@@ -1,0 +1,49 @@
+openapi: 3.1.0
+info:
+  title: identity
+  version: 0.1.0
+  description: TODO - auth, users, courses, enrollments, roles.
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      operationId: getHealthz
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /auth/token:
+    post:
+      summary: TODO - issue an auth token
+      operationId: postAuthToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        "200":
+          description: TODO - token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string

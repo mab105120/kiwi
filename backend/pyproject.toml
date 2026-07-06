@@ -1,0 +1,16 @@
+[project]
+name = "kiwi-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.uv.workspace]
+members = [
+    "libs/platform_common",
+    "services/identity",
+    "services/app-api",
+    "services/worker",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
