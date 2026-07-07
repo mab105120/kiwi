@@ -12,7 +12,7 @@ grading, and feedback delivery for instructors and students.
   (request/response) and enqueues grading jobs onto SQS.
 - **worker** — asynchronous, SQS-driven (no ALB, no HTTP server). Polls a queue and
   runs the AI grading agents (exam + assignment grading), writing results back.
-- **frontend** — Vite + React + TypeScript SPA.
+- **frontend** — Vite + React + JavaScript SPA.
 - **infra** — AWS CDK (Python v2) definitions for all of the above.
 
 Each service owns its own MySQL schema on a shared RDS instance and never reads
@@ -32,7 +32,7 @@ See the `Makefile` for all available targets, including per-service Docker build
 ## Where things live
 
 - `backend/` — the three Flask/Python services and the shared `platform_common` lib
-- `frontend/` — the Vite/React/TypeScript SPA
+- `frontend/` — the Vite/React/JavaScript SPA
 - `infra/` — AWS CDK stacks
 - `contracts/` — OpenAPI + JSON Schema contracts; source of truth for service boundaries
 - `specs/` — phase roadmap and per-feature specs/plans/tasks

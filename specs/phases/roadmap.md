@@ -32,7 +32,7 @@ contract tests; no secrets in repo.
 **Feature breakdown** (build in this order; scaffold each `specs/features/`
 folder when you start it, not before):
 
-1. [ ] `feat-01-repo-tooling` — real `Makefile` targets, `uv` workspace
+1. [x] `feat-01-repo-tooling` — real `Makefile` targets, `uv` workspace
    wiring, frontend install/lint/test scripts. No AWS. Do first —
    everything else needs a working local dev loop.
 2. [ ] `feat-02-platform-common-lib` — JWT verification, shared error

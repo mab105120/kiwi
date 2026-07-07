@@ -44,6 +44,12 @@ exists there (workspace `pyproject.toml`, per-service directories).
 - Vite/React scaffolding defaults don't match `frontend/CLAUDE.md`'s
   described `src/` layout — plan to scaffold then manually reshape, not
   expect the generator to produce it.
+- Resolved during implementation: current `create-vite` (9.x) defaults the
+  React template to oxlint, not ESLint. Passing `--eslint` to the scaffold
+  command produces flat-config ESLint directly, so no manual ESLint
+  authoring was needed. Vitest still had to be added by hand (not part of
+  any Vite template) along with `jsdom` + `@testing-library/react` for a
+  real component-rendering smoke test.
 - Nothing here touches `contracts/`, so no contract-test risk for this
   feature specifically.
 

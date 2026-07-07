@@ -40,18 +40,18 @@ run a test for any service without this landing first.
 
 ## Acceptance criteria
 
-- [ ] `make install` on a clean checkout installs all backend + frontend
+- [x] `make install` on a clean checkout installs all backend + frontend
   dependencies with no manual steps; `make install-backend` and
   `make install-frontend` each work standalone too.
-- [ ] `make lint` runs ruff + mypy on all backend packages and eslint on
+- [x] `make lint` runs ruff + mypy on all backend packages and eslint on
   the frontend, and exits non-zero on a deliberately introduced lint error;
   `make lint-backend` and `make lint-frontend` each work standalone and
   scope to only their side.
-- [ ] `make test` runs pytest for each of the three backend services and
+- [x] `make test` runs pytest for each of the three backend services and
   vitest for the frontend, and exits non-zero on a deliberately failing
   test; `make test-backend` and `make test-frontend` each work standalone
   and scope to only their side.
-- [ ] Frontend scaffold builds (`vite build`) and serves a blank page
+- [x] Frontend scaffold builds (`vite build`) and serves a blank page
   locally.
-- [ ] No secrets or credentials introduced anywhere in this change
+- [x] No secrets or credentials introduced anywhere in this change
   (constitution T-4).

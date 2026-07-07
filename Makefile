@@ -1,14 +1,12 @@
 .PHONY: install lint test install-backend lint-backend test-backend \
+	install-frontend lint-frontend test-frontend \
 	up down client build-identity build-app-api build-worker
 
-install: install-backend
-	# TODO: call install-frontend once it exists
+install: install-backend install-frontend
 
-lint: lint-backend
-	# TODO: call lint-frontend once it exists
+lint: lint-backend lint-frontend
 
-test: test-backend
-	# TODO: call test-frontend once it exists
+test: test-backend test-frontend
 
 install-backend:
 	cd backend && uv sync --all-packages
@@ -18,6 +16,15 @@ lint-backend:
 
 test-backend:
 	cd backend && uv run pytest services/identity services/app-api services/worker; status=$$?; [ $$status -eq 0 ] || [ $$status -eq 5 ]
+
+install-frontend:
+	npm --prefix frontend install
+
+lint-frontend:
+	npm --prefix frontend run lint
+
+test-frontend:
+	npm --prefix frontend run test
 
 up:
 	docker-compose up -d
