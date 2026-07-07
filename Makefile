@@ -1,16 +1,23 @@
-.PHONY: install lint test up down client build-identity build-app-api build-worker
+.PHONY: install lint test install-backend lint-backend test-backend \
+	up down client build-identity build-app-api build-worker
 
-install:
-	# TODO: uv sync across backend workspace + npm install in frontend/
-	@echo "TODO: install"
+install: install-backend
+	# TODO: call install-frontend once it exists
 
-lint:
-	# TODO: ruff/mypy for backend, eslint for frontend
-	@echo "TODO: lint"
+lint: lint-backend
+	# TODO: call lint-frontend once it exists
 
-test:
-	# TODO: pytest per backend service, vitest for frontend
-	@echo "TODO: test"
+test: test-backend
+	# TODO: call test-frontend once it exists
+
+install-backend:
+	cd backend && uv sync --all-packages
+
+lint-backend:
+	cd backend && uv run ruff check . && uv run mypy .
+
+test-backend:
+	cd backend && uv run pytest services/identity services/app-api services/worker; status=$$?; [ $$status -eq 0 ] || [ $$status -eq 5 ]
 
 up:
 	docker-compose up -d
