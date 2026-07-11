@@ -72,12 +72,10 @@ needs `ApiError` to already raise a shaped response.
   `test_errors.py` (`ApiError` → response shape/status,  uncaught exception →
   generic 500), `test_logging.py` (log output is valid JSON, sensitive
   fields/patterns don't appear verbatim in the emitted line).
-- `platform_common`'s own `pyproject.toml` needs a `pytest` dev dependency
-  and to be registered as a workspace member for `make test-backend`'s
-  per-package pytest loop to pick it up — check `backend/pyproject.toml`
-  and the `feat-01` test-wiring during implementation; it may already loop
-  over all workspace members generically, in which case no change is
-  needed there, only the new test files.
+- `platform_common` was already a `backend/pyproject.toml` workspace member
+  (`feat-01`) and picks up `pytest` from the workspace root's
+  `[dependency-groups] dev` — no per-package dev dependency needed, only the
+  new test files.
 
 ## Risks
 
@@ -96,11 +94,9 @@ needs `ApiError` to already raise a shaped response.
   guarantee every possible PII shape is caught. Flag this limitation in the
   module docstring rather than overclaiming S-5 compliance from this layer
   alone; callers remain responsible for not logging raw sensitive payloads.
-- Need to confirm whether `make test-backend`'s per-service pytest loop
-  (from `feat-01`) already includes `platform_common`, or only the three
-  `services/*`. If it only loops `services/*`, `make test-backend` needs a
-  one-line addition to also run `platform_common`'s tests — small, but
-  worth checking rather than assuming.
+- Confirmed `make test-backend`'s pytest invocation (from `feat-01`) only
+  listed `services/*` explicitly, not `platform_common` — added
+  `libs/platform_common` to that list in the root `Makefile`.
 
 ## Sequencing
 

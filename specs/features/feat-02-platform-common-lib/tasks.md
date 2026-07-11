@@ -46,7 +46,7 @@
 
 ## Wrap-up
 
-- [ ] Update this feature's `spec.md`/`plan.md` if anything changed during
+- [x] Update this feature's `spec.md`/`plan.md` if anything changed during
   implementation (constitution W-1)
-- [ ] Check off the `feat-02-platform-common-lib` line in
+- [x] Check off the `feat-02-platform-common-lib` line in
   `specs/phases/roadmap.md`'s Phase 0 feature breakdown

@@ -74,25 +74,25 @@ body, or emit structured logs without this landing first.
 
 ## Acceptance criteria
 
-- [ ] `validate_jwt` accepts a validly-signed, unexpired token and returns
+- [x] `validate_jwt` accepts a validly-signed, unexpired token and returns
   its claims; rejects an expired token, a token signed with the wrong key,
   and a malformed token, each raising `ApiError` with `status_code == 401`.
-- [ ] A Flask route decorated with `require_auth` returns a `401` JSON error
+- [x] A Flask route decorated with `require_auth` returns a `401` JSON error
   envelope for a missing/invalid/expired `Authorization` header, and calls
   through to the handler (with claims available on `flask.g`) for a valid
   one.
-- [ ] `register_error_handlers` makes a Flask app return the `ApiError`
+- [x] `register_error_handlers` makes a Flask app return the `ApiError`
   envelope with the correct status code for a raised `ApiError`, and a
   generic `500` envelope (no stack trace, no exception message) for any
   other uncaught exception.
-- [ ] `configure_logging` produces structured (JSON) log lines on stdout,
+- [x] `configure_logging` produces structured (JSON) log lines on stdout,
   and a log call containing an email address, a bearer token, or a field
   named `password`/`token`/`answer` never emits that value verbatim (S-5).
-- [ ] `identity`, `app-api`, and `worker` each call `configure_logging()` on
+- [x] `identity`, `app-api`, and `worker` each call `configure_logging()` on
   startup; `identity` and `app-api` each call `register_error_handlers`
   from `create_app()`.
-- [ ] `make test-backend` collects and passes new unit tests for all three
+- [x] `make test-backend` collects and passes new unit tests for all three
   `platform_common` modules.
-- [ ] No secrets or credentials introduced anywhere in this change
+- [x] No secrets or credentials introduced anywhere in this change
   (constitution T-4) — the JWT signing secret is read from an env var, never
   committed.
