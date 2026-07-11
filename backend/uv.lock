@@ -528,6 +528,12 @@ wheels = [
 name = "platform-common"
 version = "0.1.0"
 source = { editable = "libs/platform_common" }
+dependencies = [
+    { name = "flask" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "flask", specifier = ">=3.1" }]
 
 [[package]]
 name = "pluggy"
