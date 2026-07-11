@@ -2,34 +2,34 @@
 
 ## Errors
 
-- [ ] Add `register_error_handlers(app)` to `errors.py`: `ApiError` →
+- [x] Add `register_error_handlers(app)` to `errors.py`: `ApiError` →
   `to_dict()`/`status_code`; any other exception → generic `500` envelope
   with no leaked exception detail
 
 ## Auth
 
-- [ ] Add `PyJWT` dependency to `backend/libs/platform_common/pyproject.toml`
-- [ ] Implement `validate_jwt(token)`: decode + verify signature/expiry via
+- [x] Add `PyJWT` dependency to `backend/libs/platform_common/pyproject.toml`
+- [x] Implement `validate_jwt(token)`: decode + verify signature/expiry via
   `JWT_SIGNING_SECRET` env var, raise `ApiError(401)` on any failure
-- [ ] Add `require_auth` Flask decorator: parse `Authorization: Bearer`
+- [x] Add `require_auth` Flask decorator: parse `Authorization: Bearer`
   header, call `validate_jwt`, attach claims to `flask.g`, 401 on failure
 
 ## Logging
 
-- [ ] Implement `configure_logging()`: JSON-structured stdout logging
+- [x] Implement `configure_logging()`: JSON-structured stdout logging
   (timestamp, level, logger, message, service name)
-- [ ] Add redaction filter/formatter: mask known sensitive field names
+- [x] Add redaction filter/formatter: mask known sensitive field names
   (`password`, `token`, `answer`, `email`) and bearer-token/email-shaped
   substrings in rendered messages (S-5)
-- [ ] Make `configure_logging()` idempotent (safe under gunicorn/reload)
+- [x] Make `configure_logging()` idempotent (safe under gunicorn/reload)
 
 ## Service wiring
 
-- [ ] `identity/app/__init__.py`: call `configure_logging()` +
+- [x] `identity/app/__init__.py`: call `configure_logging()` +
   `register_error_handlers(app)` in `create_app()`
-- [ ] `app-api/app/__init__.py`: call `configure_logging()` +
+- [x] `app-api/app/__init__.py`: call `configure_logging()` +
   `register_error_handlers(app)` in `create_app()`
-- [ ] `worker/app/worker.py`: call `configure_logging()` at process start
+- [x] `worker/app/worker.py`: call `configure_logging()` at process start
 
 ## Tests
 
