@@ -33,16 +33,16 @@
 
 ## Tests
 
-- [ ] Add `backend/libs/platform_common/tests/unit/test_auth.py`: valid
+- [x] Add `backend/libs/platform_common/tests/unit/test_auth.py`: valid
   token, expired token, wrong-secret token, malformed token,
   missing/malformed `Authorization` header
-- [ ] Add `backend/libs/platform_common/tests/unit/test_errors.py`:
+- [x] Add `backend/libs/platform_common/tests/unit/test_errors.py`:
   `ApiError` → correct status/body; uncaught exception → generic 500
-- [ ] Add `backend/libs/platform_common/tests/unit/test_logging.py`: output
+- [x] Add `backend/libs/platform_common/tests/unit/test_logging.py`: output
   is valid JSON; sensitive fields/patterns never appear verbatim
-- [ ] Confirm `make test-backend` runs `platform_common`'s tests (add it to
+- [x] Confirm `make test-backend` runs `platform_common`'s tests (add it to
   the per-package pytest loop if it's currently only `services/*`)
-- [ ] Verify: `make lint-backend` and `make test-backend` both pass clean
+- [x] Verify: `make lint-backend` and `make test-backend` both pass clean
 
 ## Wrap-up
 
