@@ -15,7 +15,7 @@ lint-backend:
 	cd backend && uv run ruff check . && uv run mypy .
 
 test-backend:
-	cd backend && uv run pytest services/identity services/app-api services/worker; status=$$?; [ $$status -eq 0 ] || [ $$status -eq 5 ]
+	cd backend && uv run pytest libs/platform_common services/identity services/app-api services/worker; status=$$?; [ $$status -eq 0 ] || [ $$status -eq 5 ]
 
 install-frontend:
 	npm --prefix frontend install

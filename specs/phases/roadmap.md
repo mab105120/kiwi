@@ -35,7 +35,7 @@ folder when you start it, not before):
 1. [x] `feat-01-repo-tooling` — real `Makefile` targets, `uv` workspace
    wiring, frontend install/lint/test scripts. No AWS. Do first —
    everything else needs a working local dev loop.
-2. [ ] `feat-02-platform-common-lib` — JWT verification, shared error
+2. [x] `feat-02-platform-common-lib` — JWT verification, shared error
    envelope, logging with PII redaction (S-5). Pure backend, can run in
    parallel with #1.
 3. [ ] `feat-03-infra-network-data` — CDK `network_stack.py` +

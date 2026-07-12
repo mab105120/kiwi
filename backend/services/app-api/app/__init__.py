@@ -1,10 +1,16 @@
 from flask import Flask, jsonify
 
+from platform_common.errors import register_error_handlers
+from platform_common.logging import configure_logging
+
 
 def create_app() -> Flask:
-    app = Flask(__name__)
+    configure_logging(service="app-api")
 
-    # TODO: load config, init db session, register error handlers.
+    app = Flask(__name__)
+    register_error_handlers(app)
+
+    # TODO: load config, init db session.
 
     @app.get("/healthz")
     def healthz():
