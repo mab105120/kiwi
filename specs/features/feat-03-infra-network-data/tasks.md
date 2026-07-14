@@ -34,15 +34,15 @@ Network additions → Docs → Verification & wrap-up.
 
 ## Network additions
 
-- [ ] Add `alb-sg` security group to `network_stack.py`: inbound 80/443 from
+- [x] Add `alb-sg` security group to `network_stack.py`: inbound 80/443 from
   `0.0.0.0/0`, `allow_all_outbound=False`
-- [ ] Add `fargate-services-sg` security group to `network_stack.py`:
+- [x] Add `fargate-services-sg` security group to `network_stack.py`:
   inbound all TCP from `alb-sg` only, `allow_all_outbound=True`
-- [ ] Add `fargate-services-sg` as an additional inbound source (TCP 3306)
+- [x] Add `fargate-services-sg` as an additional inbound source (TCP 3306)
   on the existing `db-sg`
-- [ ] Add an internet-facing `elbv2.ApplicationLoadBalancer` in the public
+- [x] Add an internet-facing `elbv2.ApplicationLoadBalancer` in the public
   subnets with `alb-sg`, no listener/target group yet
-- [ ] Add `CfnOutput`s: `AlbArn`, `AlbDnsName`, `AlbSecurityGroupId`,
+- [x] Add `CfnOutput`s: `AlbArn`, `AlbDnsName`, `AlbSecurityGroupId`,
   `FargateServicesSecurityGroupId`, `PublicSubnetIds`, `PrivateSubnetIds`
 
 ## Docs
