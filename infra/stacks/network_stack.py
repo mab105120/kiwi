@@ -1,6 +1,8 @@
 from aws_cdk import (
+    Fn,
     Stack,
     aws_ec2 as ec2,
+    aws_elasticloadbalancingv2 as elbv2,
     aws_iam as iam,
     CfnOutput,
 )
@@ -56,6 +58,58 @@ class NetworkStack(Stack):
             peer=self.lambda_security_group,
             connection=ec2.Port.tcp(3306),
             description="Allow inbound MySQL from Lambda security group",
+        )
+
+        self.alb_security_group = ec2.SecurityGroup(
+            self,
+            "AlbSecurityGroup",
+            vpc=self.vpc,
+            security_group_name=f"{env_name}-alb-sg",
+            description="Attached to the ALB; allows inbound HTTP/HTTPS from the internet",
+            allow_all_outbound=False,
+        )
+
+        self.alb_security_group.add_ingress_rule(
+            peer=ec2.Peer.any_ipv4(),
+            connection=ec2.Port.tcp(80),
+            description="Allow inbound HTTP from the internet",
+        )
+
+        self.alb_security_group.add_ingress_rule(
+            peer=ec2.Peer.any_ipv4(),
+            connection=ec2.Port.tcp(443),
+            description="Allow inbound HTTPS from the internet",
+        )
+
+        self.fargate_services_security_group = ec2.SecurityGroup(
+            self,
+            "FargateServicesSecurityGroup",
+            vpc=self.vpc,
+            security_group_name=f"{env_name}-fargate-services-sg",
+            description="Attached to Fargate services behind the ALB",
+            allow_all_outbound=True,
+        )
+
+        self.fargate_services_security_group.add_ingress_rule(
+            peer=self.alb_security_group,
+            connection=ec2.Port.all_tcp(),
+            description="Allow inbound from ALB security group",
+        )
+
+        self.db_security_group.add_ingress_rule(
+            peer=self.fargate_services_security_group,
+            connection=ec2.Port.tcp(3306),
+            description="Allow inbound MySQL from Fargate services security group",
+        )
+
+        self.alb = elbv2.ApplicationLoadBalancer(
+            self,
+            "Alb",
+            vpc=self.vpc,
+            internet_facing=True,
+            security_group=self.alb_security_group,
+            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+            load_balancer_name=f"{env_name}-alb",
         )
 
         self.bastion_security_group = None
@@ -127,4 +181,50 @@ class NetworkStack(Stack):
             "LambdaSecurityGroupId",
             value=self.lambda_security_group.security_group_id,
             description="Lambda security group ID",
+        )
+        CfnOutput(
+            self,
+            "AlbArn",
+            value=self.alb.load_balancer_arn,
+            description="ALB ARN",
+        )
+        CfnOutput(
+            self,
+            "AlbDnsName",
+            value=self.alb.load_balancer_dns_name,
+            description="ALB DNS name",
+        )
+        CfnOutput(
+            self,
+            "AlbSecurityGroupId",
+            value=self.alb_security_group.security_group_id,
+            description="ALB security group ID",
+        )
+        CfnOutput(
+            self,
+            "FargateServicesSecurityGroupId",
+            value=self.fargate_services_security_group.security_group_id,
+            description="Fargate services security group ID",
+        )
+        CfnOutput(
+            self,
+            "PublicSubnetIds",
+            value=Fn.join(
+                ",",
+                self.vpc.select_subnets(
+                    subnet_type=ec2.SubnetType.PUBLIC
+                ).subnet_ids,
+            ),
+            description="Public subnet IDs (comma-separated)",
+        )
+        CfnOutput(
+            self,
+            "PrivateSubnetIds",
+            value=Fn.join(
+                ",",
+                self.vpc.select_subnets(
+                    subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+                ).subnet_ids,
+            ),
+            description="Private subnet IDs (comma-separated)",
         )
