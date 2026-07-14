@@ -5,31 +5,31 @@ Network additions → Docs → Verification & wrap-up.
 
 ## Migration
 
-- [ ] Copy `kiwi-cloud-config/app.py`, `cdk.json`, `cdk.context.json`,
+- [x] Copy `kiwi-cloud-config/app.py`, `cdk.json`, `cdk.context.json`,
   `stacks/__init__.py` into `infra/` (not `requirements.txt` — replaced by
   `uv` tooling below)
-- [ ] Copy `stacks/vpc_stack.py` into `infra/stacks/network_stack.py`,
+- [x] Copy `stacks/vpc_stack.py` into `infra/stacks/network_stack.py`,
   renaming the class `VpcStack` → `NetworkStack`
-- [ ] Copy `stacks/database_stack.py` into `infra/stacks/data_stack.py`,
+- [x] Copy `stacks/database_stack.py` into `infra/stacks/data_stack.py`,
   renaming the class `DatabaseStack` → `DataStack`
-- [ ] Copy `stacks/cicd_stack.py` into `infra/stacks/cicd_stack.py`
+- [x] Copy `stacks/cicd_stack.py` into `infra/stacks/cicd_stack.py`
   unchanged (still not instantiated in `app.py`)
-- [ ] Copy `lambda/create_db_user/` into `infra/lambda/create_db_user/`
+- [x] Copy `lambda/create_db_user/` into `infra/lambda/create_db_user/`
   unchanged, including its own `requirements.txt` (Lambda bundling detail,
   unrelated to the CDK app's own tooling)
-- [ ] Add `infra/pyproject.toml`: `aws-cdk-lib`/`constructs` dependencies
+- [x] Add `infra/pyproject.toml`: `aws-cdk-lib`/`constructs` dependencies
   (same version floors as the source `requirements.txt`), `requires-python`
   matching the source repo's Python 3.11, `[tool.uv] package = false`; check
   `infra/CLAUDE.md`'s existing conventions before adding a `ruff`/`mypy` dev
   group — only add it if those conventions call for infra lint tooling, not
   speculatively
-- [ ] Run `uv lock` to generate `infra/uv.lock`, then `uv sync` to create
+- [x] Run `uv lock` to generate `infra/uv.lock`, then `uv sync` to create
   `infra/.venv`
-- [ ] Update `infra/stacks/__init__.py` and `infra/app.py` imports/class
+- [x] Update `infra/stacks/__init__.py` and `infra/app.py` imports/class
   references for the renamed stacks; keep the existing stack ids
   (`{env}-kiwi-vpc-stack`, `{env}-kiwi-db-stack`) unchanged so `cdk deploy`
   targets the already-deployed CloudFormation stacks
-- [ ] Verify: `cd infra && uv sync && uv run cdk synth` succeeds with no
+- [x] Verify: `cd infra && uv sync && uv run cdk synth` succeeds with no
   errors and matches the source repo's last deployed stack shape
 
 ## Network additions
