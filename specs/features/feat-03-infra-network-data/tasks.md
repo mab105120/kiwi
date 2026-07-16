@@ -47,7 +47,7 @@ Network additions → Docs → Verification & wrap-up.
 
 ## Docs
 
-- [ ] Rewrite `infra/CLAUDE.md`: `## Setup`/`## Common Commands` sections
+- [x] Rewrite `infra/CLAUDE.md`: `## Setup`/`## Common Commands` sections
   updated to `uv` (`uv sync`, `uv run cdk synth`/`deploy`/`diff`/`destroy`),
   replacing the source repo's pip+venv instructions; stack layout section
   updated for `NetworkStack`/`DataStack` naming and the ALB/security-group
