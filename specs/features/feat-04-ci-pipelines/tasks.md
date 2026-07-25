@@ -102,14 +102,34 @@ commit, so it's called out separately at the end.
 
 ## Secret scanning
 
-- [ ] Add `.github/workflows/secret-scan.yml` triggered on `push` (all
+- [x] Add `.github/workflows/secret-scan.yml` triggered on `push` (all
   branches) and `pull_request` (against `main`), running
-  `gitleaks/gitleaks-action` against full repository history (not diff-only)
-- [ ] Run it once against the current repo state; if it flags an existing
+  `gitleaks/gitleaks-action` — **revised from the original plan.md design
+  during implementation**: `gitleaks/gitleaks-action` hardcodes diff-only
+  scanning on `push`/`pull_request` events (single commit, or the pushed
+  commit range) and only scans full history on `workflow_dispatch`/`schedule`
+  triggers — confirmed by reading the action's source
+  (github.com/gitleaks/gitleaks-action, `dist/index.js`'s `Scan()`/`start()`
+  functions). Forcing a full-history scan on every push/PR isn't structurally
+  supported by the action without dropping to the bare `gitleaks` CLI, and
+  isn't actually needed: every commit lands via this same push/PR path going
+  forward, so diff-only scanning already covers all new commits. The repo is
+  new with no pre-existing secrets, so the one remaining gap a full-history
+  scan would close (pre-CI history never having been scanned) doesn't apply
+  here — skipping the manual one-time baseline scan below for that reason.
+- [x] ~~Run it once against the current repo state; if it flags an existing
   false positive, add a scoped `.gitleaks.toml` allowlist entry (not a
-  broader suppression)
-- [ ] Push a scratch commit containing a realistic-looking fake credential to
-  confirm the job fails distinctly; revert once confirmed
+  broader suppression)~~ Skipped: repo is new and confirmed to have no
+  pre-existing secrets (owner's call), so no baseline scan was run and no
+  `.gitleaks.toml` was needed.
+- [x] Push a scratch commit containing a realistic-looking fake credential to
+  confirm the job fails distinctly; revert once confirmed (first attempt in
+  run 30176462925 used AWS's own canonical example key,
+  `AKIAIOSFODNN7EXAMPLE`, which passed silently — gitleaks's default
+  ruleset allowlists it by design because it contains "EXAMPLE". Retried
+  with a realistic fake GitHub PAT (`ghp_...`), which correctly failed the
+  `gitleaks` job distinctly in run 30176736235. Both scratch commits
+  reverted in 5c694be/efc5b4c, verified green again in run 30176778287.)
 
 ## Verification & wrap-up
 
