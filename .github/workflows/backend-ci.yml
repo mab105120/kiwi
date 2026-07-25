@@ -32,8 +32,10 @@ jobs:
       - name: Test ${{ matrix.package }}
         run: |
           cd backend
+          set +e
           uv run pytest ${{ matrix.package }} --ignore=${{ matrix.package }}/tests/contract
           status=$?
+          set -e
           [ $status -eq 0 ] || [ $status -eq 5 ]
 
   contract-test:
@@ -50,8 +52,10 @@ jobs:
       - name: Contract test ${{ matrix.service }}
         run: |
           cd backend
+          set +e
           uv run pytest services/${{ matrix.service }}/tests/contract
           status=$?
+          set -e
           [ $status -eq 0 ] || [ $status -eq 5 ]
 
   backend-coverage:
@@ -64,10 +68,12 @@ jobs:
       - name: Coverage
         run: |
           cd backend
+          set +e
           uv run pytest libs/platform_common services/identity services/app-api services/worker \
             --cov=libs/platform_common --cov=services/identity/app --cov=services/app-api/app --cov=services/worker/app \
             --cov-fail-under=80
           status=$?
+          set -e
           [ $status -eq 0 ] || [ $status -eq 5 ]
 
   docker-build:
