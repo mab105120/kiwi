@@ -23,7 +23,7 @@ def client():
 def test_api_error_maps_to_its_status_and_body(client):
     response = client.get("/boom-api-error")
 
-    assert response.status_code == 418
+    assert response.status_code == 999  # scratch: deliberately wrong, for CI verification
     assert response.get_json() == {"error": {"message": "nope", "code": "teapot"}}
 
 
