@@ -1,0 +1,89 @@
+# Tasks: CI Pipelines
+
+Six groups below, each intended as its own commit, in order: Coverage
+tooling → Backend CI → Frontend CI → Infra CI → Secret scanning →
+Verification & wrap-up. Branch protection is a repo-settings change, not a
+commit, so it's called out separately at the end.
+
+## Coverage tooling
+
+- [x] Add `pytest-cov` to `backend/pyproject.toml`'s `dev` dependency group;
+  `uv lock` and `uv sync` to pick it up
+- [x] Add `@vitest/coverage-v8` to `frontend/package.json`'s
+  `devDependencies`; `npm install` to pick it up
+- [x] Configure an 80% statements/lines coverage threshold in
+  `frontend/vite.config.js`'s `test.coverage.thresholds` (vitest's `v8`
+  provider)
+- [x] Verify locally: `npm --prefix frontend run test -- --coverage` reports
+  coverage and enforces the threshold
+
+## Backend CI
+
+- [ ] Add `.github/workflows/backend-ci.yml` triggered on `push` (all
+  branches) and `pull_request` (against `main`)
+- [ ] `lint` job: `cd backend && uv sync --all-packages && uv run ruff check
+  . && uv run mypy .` (matches `make lint-backend` unchanged, one job for the
+  whole workspace)
+- [ ] `test` job, matrixed over `libs/platform_common`, `services/identity`,
+  `services/app-api`, `services/worker`: `uv run pytest <package-path>
+  --ignore=<package-path>/tests/contract --cov=<package-path>
+  --cov-fail-under=80`
+- [ ] `contract-test` job, matrixed over `services/identity`,
+  `services/app-api`, `services/worker`: `uv run pytest
+  services/<service>/tests/contract`
+- [ ] `docker-build` job, matrixed over `identity`, `app-api`, `worker`: reuse
+  the existing `make build-<service>` targets unchanged
+- [ ] Verify the `test`/`--ignore` split and the `contract-test` job together
+  cover exactly the same files `make test-backend` runs today — nothing
+  silently dropped between the two jobs
+- [ ] Push a scratch commit with a deliberately failing lint rule, unit test,
+  contract test, and coverage drop (one at a time or together) to confirm
+  each surfaces as its own distinctly-named, attributable job failure; revert
+  the scratch commit once confirmed
+
+## Frontend CI
+
+- [ ] Add `.github/workflows/frontend-ci.yml` triggered on `push` (all
+  branches) and `pull_request` (against `main`)
+- [ ] `install-and-lint` job: `npm --prefix frontend ci && npm --prefix
+  frontend run lint`
+- [ ] `test` job: `npm --prefix frontend run test -- --coverage`
+- [ ] Push a scratch commit with a deliberately failing lint rule, test, and
+  coverage drop to confirm each fails its own job distinctly; revert once
+  confirmed
+
+## Infra CI
+
+- [ ] Add `.github/workflows/infra-ci.yml` triggered on `push` (all branches)
+  and `pull_request` (against `main`)
+- [ ] `synth` job: `cd infra && uv sync && npm install -g aws-cdk && uv run
+  cdk synth`, with no AWS credentials configured on the runner
+- [ ] Confirm the job passes with no credentials present (validates that
+  `network_stack.py`/`data_stack.py` still contain no `from_lookup`-style
+  live-AWS construct)
+- [ ] Push a scratch commit with a deliberately broken stack (e.g. a syntax
+  error) to confirm `synth` fails distinctly; revert once confirmed
+
+## Secret scanning
+
+- [ ] Add `.github/workflows/secret-scan.yml` triggered on `push` (all
+  branches) and `pull_request` (against `main`), running
+  `gitleaks/gitleaks-action` against full repository history (not diff-only)
+- [ ] Run it once against the current repo state; if it flags an existing
+  false positive, add a scoped `.gitleaks.toml` allowlist entry (not a
+  broader suppression)
+- [ ] Push a scratch commit containing a realistic-looking fake credential to
+  confirm the job fails distinctly; revert once confirmed
+
+## Verification & wrap-up
+
+- [ ] Open a PR containing all four workflow files and confirm every job
+  listed above appears and passes on a clean commit
+- [ ] Configure required-status-check branch protection on `main` covering
+  every job introduced by this feature (repo settings / `gh api` /
+  `gh ruleset` — not a file committed to the repo; only possible once each
+  job has run at least once against `main`)
+- [ ] Update this feature's `spec.md`/`plan.md` if anything changed during
+  implementation (constitution W-1)
+- [ ] Check off the `feat-04-ci-pipelines` line in
+  `specs/phases/roadmap.md`'s Phase 0 feature breakdown
