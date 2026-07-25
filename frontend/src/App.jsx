@@ -4,19 +4,6 @@ import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import './App.css'
 
-// Scratch function for CI coverage-threshold verification; reverted after confirming.
-function scratchUncoveredHelper() {
-  const a = 1
-  const b = 2
-  const c = 3
-  const d = 4
-  const e = 5
-  const f = 6
-  const g = 7
-  const h = 8
-  return a + b + c + d + e + f + g + h
-}
-
 function App() {
   const [count, setCount] = useState(0)
 
