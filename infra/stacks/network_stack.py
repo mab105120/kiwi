@@ -10,7 +10,7 @@ from constructs import Construct
 
 
 class NetworkStack(Stack):
-    def __init__(self, scope: Construct, id: str, env_name: str, **kwargs):
+    def __init__(self, scope: Construct, id: str, env_name: str, **kwargs)
         super().__init__(scope, id, **kwargs)
 
         # Create the VPC
