@@ -23,19 +23,33 @@ requirement.
   exist today, out of proportion to this feature.
 - `test` — matrix over the four backend packages (`libs/platform_common`,
   `services/identity`, `services/app-api`, `services/worker`), each running
-  `uv run pytest <package-path> --ignore=<package-path>/tests/contract
-  --cov=<package-path> --cov-fail-under=80`. Requires adding `pytest-cov` to
-  `backend/pyproject.toml`'s `dev` dependency group (not present today).
-  Excluding `tests/contract` here is what makes the next job's contract
-  results attributable separately rather than double-counted silently inside
-  "test". The Makefile's `test-backend` target also now carries
+  `uv run pytest <package-path> --ignore=<package-path>/tests/contract`, no
+  `--cov` flag. Excluding `tests/contract` here is what makes the next job's
+  contract results attributable separately rather than double-counted
+  silently inside "test".
+- `backend-coverage` — **revised during implementation from the original
+  per-package `--cov-fail-under=80` on the `test` matrix above.** A single,
+  non-matrixed job running `uv run pytest libs/platform_common
+  services/identity services/app-api services/worker --cov=libs/platform_common
+  --cov=services/identity/app --cov=services/app-api/app
+  --cov=services/worker/app --cov-fail-under=80` — identical to the
+  Makefile's `test-backend` target. The original per-package design was
+  found to fail immediately for `identity`/`app-api`/`worker` (0% coverage
+  each, since those services only have empty `tests/unit/__init__.py`
+  placeholders today) even though combined backend coverage is 87%. It also
+  contradicted this plan's own Risk note below, which already called for one
+  coverage number per language rather than per service. Requires adding
+  `pytest-cov` to `backend/pyproject.toml`'s `dev` dependency group (not
+  present today). The Makefile's `test-backend` target also now carries
   `--cov=<paths> --cov-fail-under=80` (all four packages, one invocation) —
-  added so `make test-backend` fails on a coverage drop exactly as the CI
-  `test` job would, per spec.md's local/CI parity acceptance criterion. It
-  does not also split out `--ignore=tests/contract`/a separate contract run
-  locally, since that split exists in CI purely for failure attribution, not
-  for pass/fail parity — a failing contract test already fails
-  `make test-backend` today.
+  added so `make test-backend` fails on a coverage drop exactly as this job
+  would, per spec.md's local/CI parity acceptance criterion. It does not also
+  split out `--ignore=tests/contract`/a separate contract run locally, since
+  that split exists in CI purely for failure attribution, not for pass/fail
+  parity — a failing contract test already fails `make test-backend` today.
+  Consequence of the combined-coverage design: the check enforces 80% across
+  the backend as a whole, not per service — a service can sit at 0% coverage
+  indefinitely as long as the aggregate holds.
 - `contract-test` — matrix over the three services with a contract suite
   (`identity`, `app-api`, `worker`; `platform_common` has none), each running
   `uv run pytest services/<service>/tests/contract`. This is new: today

@@ -19,23 +19,40 @@ commit, so it's called out separately at the end.
 
 ## Backend CI
 
-- [ ] Add `.github/workflows/backend-ci.yml` triggered on `push` (all
+- [x] Add `.github/workflows/backend-ci.yml` triggered on `push` (all
   branches) and `pull_request` (against `main`)
-- [ ] `lint` job: `cd backend && uv sync --all-packages && uv run ruff check
+- [x] `lint` job: `cd backend && uv sync --all-packages && uv run ruff check
   . && uv run mypy .` (matches `make lint-backend` unchanged, one job for the
   whole workspace)
-- [ ] `test` job, matrixed over `libs/platform_common`, `services/identity`,
+- [x] `test` job, matrixed over `libs/platform_common`, `services/identity`,
   `services/app-api`, `services/worker`: `uv run pytest <package-path>
-  --ignore=<package-path>/tests/contract --cov=<package-path>
-  --cov-fail-under=80`
-- [ ] `contract-test` job, matrixed over `services/identity`,
+  --ignore=<package-path>/tests/contract` (no `--cov` here — see below;
+  revised from the original plan.md design during implementation)
+- [x] `contract-test` job, matrixed over `services/identity`,
   `services/app-api`, `services/worker`: `uv run pytest
   services/<service>/tests/contract`
-- [ ] `docker-build` job, matrixed over `identity`, `app-api`, `worker`: reuse
+- [x] `backend-coverage` job, **not matrixed** (single job across all four
+  packages combined): `uv run pytest libs/platform_common services/identity
+  services/app-api services/worker --cov=libs/platform_common
+  --cov=services/identity/app --cov=services/app-api/app
+  --cov=services/worker/app --cov-fail-under=80` — identical to the
+  Makefile's `test-backend` target. Added because `identity`/`app-api`/
+  `worker` have no unit tests yet (only empty `tests/unit/__init__.py`
+  placeholders), so a *per-package* `--cov-fail-under=80` as originally
+  planned would fail immediately at 0% for each of those three, even though
+  combined backend coverage is 87% today. This also aligns with plan.md's own
+  Risks section, which already called for one coverage number per language,
+  not per service — the per-package matrix design in the original `test` job
+  description contradicted that. Consequence: the check enforces 80% across
+  the backend as a whole, not per-service; a service can sit at 0% coverage
+  indefinitely as long as the combined number holds.
+- [x] `docker-build` job, matrixed over `identity`, `app-api`, `worker`: reuse
   the existing `make build-<service>` targets unchanged
-- [ ] Verify the `test`/`--ignore` split and the `contract-test` job together
+- [x] Verify the `test`/`--ignore` split and the `contract-test` job together
   cover exactly the same files `make test-backend` runs today — nothing
-  silently dropped between the two jobs
+  silently dropped between the two jobs (confirmed via `pytest
+  --collect-only`: both collect the same 14 `platform_common` tests and 0
+  contract tests, matching `make test-backend`'s full collection exactly)
 - [ ] Push a scratch commit with a deliberately failing lint rule, unit test,
   contract test, and coverage drop (one at a time or together) to confirm
   each surfaces as its own distinctly-named, attributable job failure; revert

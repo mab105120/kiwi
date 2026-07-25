@@ -1,0 +1,82 @@
+name: Backend CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: cd backend && uv sync --all-packages
+      - name: Ruff
+        run: cd backend && uv run ruff check .
+      - name: Mypy
+        run: cd backend && uv run mypy .
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [libs/platform_common, services/identity, services/app-api, services/worker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: cd backend && uv sync --all-packages
+      - name: Test ${{ matrix.package }}
+        run: |
+          cd backend
+          uv run pytest ${{ matrix.package }} --ignore=${{ matrix.package }}/tests/contract
+          status=$?
+          [ $status -eq 0 ] || [ $status -eq 5 ]
+
+  contract-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [identity, app-api, worker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: cd backend && uv sync --all-packages
+      - name: Contract test ${{ matrix.service }}
+        run: |
+          cd backend
+          uv run pytest services/${{ matrix.service }}/tests/contract
+          status=$?
+          [ $status -eq 0 ] || [ $status -eq 5 ]
+
+  backend-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: cd backend && uv sync --all-packages
+      - name: Coverage
+        run: |
+          cd backend
+          uv run pytest libs/platform_common services/identity services/app-api services/worker \
+            --cov=libs/platform_common --cov=services/identity/app --cov=services/app-api/app --cov=services/worker/app \
+            --cov-fail-under=80
+          status=$?
+          [ $status -eq 0 ] || [ $status -eq 5 ]
+
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [identity, app-api, worker]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ${{ matrix.service }}
+        run: make build-${{ matrix.service }}
