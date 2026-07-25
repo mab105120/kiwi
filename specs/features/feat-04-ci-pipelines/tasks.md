@@ -133,13 +133,20 @@ commit, so it's called out separately at the end.
 
 ## Verification & wrap-up
 
-- [ ] Open a PR containing all four workflow files and confirm every job
+- [x] Open a PR containing all four workflow files and confirm every job
   listed above appears and passes on a clean commit
-- [ ] Configure required-status-check branch protection on `main` covering
+- [x] Configure required-status-check branch protection on `main` covering
   every job introduced by this feature (repo settings / `gh api` /
   `gh ruleset` — not a file committed to the repo; only possible once each
   job has run at least once against `main`)
-- [ ] Update this feature's `spec.md`/`plan.md` if anything changed during
-  implementation (constitution W-1)
-- [ ] Check off the `feat-04-ci-pipelines` line in
+- [x] Update this feature's `spec.md`/`plan.md` if anything changed during
+  implementation (constitution W-1) — updated in commit 670a420: frontend
+  coverage threshold is 50%, not 80% (`plan.md`'s frontend-ci section and
+  Risks; `spec.md`'s scope/acceptance criteria), and secret scanning is
+  diff-only per push/PR, not full repository history (`plan.md`'s
+  secret-scan section, Risks, and Sequencing step 5; `spec.md`'s scope). The
+  backend-coverage per-package-vs-combined deviation was already recorded in
+  `plan.md` from the start (not something introduced after the fact), so no
+  further edit was needed there.
+- [x] Check off the `feat-04-ci-pipelines` line in
   `specs/phases/roadmap.md`'s Phase 0 feature breakdown
