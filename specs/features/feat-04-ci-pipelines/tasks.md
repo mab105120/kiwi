@@ -53,10 +53,16 @@ commit, so it's called out separately at the end.
   silently dropped between the two jobs (confirmed via `pytest
   --collect-only`: both collect the same 14 `platform_common` tests and 0
   contract tests, matching `make test-backend`'s full collection exactly)
-- [ ] Push a scratch commit with a deliberately failing lint rule, unit test,
+- [x] Push a scratch commit with a deliberately failing lint rule, unit test,
   contract test, and coverage drop (one at a time or together) to confirm
   each surfaces as its own distinctly-named, attributable job failure; revert
-  the scratch commit once confirmed
+  the scratch commit once confirmed (confirmed in GH Actions run 30174793949:
+  `lint`, `test (libs/platform_common)`, `contract-test (identity)`, and
+  `backend-coverage` each failed independently on their own step while all
+  other legs stayed green; `docker-build (identity)` also failed in that run
+  but from an unrelated transient Docker Hub network timeout, confirmed by a
+  clean pass on retry. Reverted in commit 83ceb57, verified green again in
+  run 30174947211.)
 
 ## Frontend CI
 
