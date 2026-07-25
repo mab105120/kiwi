@@ -66,11 +66,11 @@ commit, so it's called out separately at the end.
 
 ## Frontend CI
 
-- [ ] Add `.github/workflows/frontend-ci.yml` triggered on `push` (all
+- [x] Add `.github/workflows/frontend-ci.yml` triggered on `push` (all
   branches) and `pull_request` (against `main`)
-- [ ] `install-and-lint` job: `npm --prefix frontend ci && npm --prefix
+- [x] `install-and-lint` job: `npm --prefix frontend ci && npm --prefix
   frontend run lint`
-- [ ] `test` job: `npm --prefix frontend run test -- --coverage`
+- [x] `test` job: `npm --prefix frontend run test -- --coverage`
 - [ ] Push a scratch commit with a deliberately failing lint rule, test, and
   coverage drop to confirm each fails its own job distinctly; revert once
   confirmed
