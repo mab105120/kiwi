@@ -86,15 +86,19 @@ commit, so it's called out separately at the end.
 
 ## Infra CI
 
-- [ ] Add `.github/workflows/infra-ci.yml` triggered on `push` (all branches)
+- [x] Add `.github/workflows/infra-ci.yml` triggered on `push` (all branches)
   and `pull_request` (against `main`)
-- [ ] `synth` job: `cd infra && uv sync && npm install -g aws-cdk && uv run
+- [x] `synth` job: `cd infra && uv sync && npm install -g aws-cdk && uv run
   cdk synth`, with no AWS credentials configured on the runner
-- [ ] Confirm the job passes with no credentials present (validates that
+- [x] Confirm the job passes with no credentials present (validates that
   `network_stack.py`/`data_stack.py` still contain no `from_lookup`-style
-  live-AWS construct)
-- [ ] Push a scratch commit with a deliberately broken stack (e.g. a syntax
+  live-AWS construct; confirmed in GH Actions run 30176178117 on a
+  GitHub-hosted runner with no AWS credentials configured)
+- [x] Push a scratch commit with a deliberately broken stack (e.g. a syntax
   error) to confirm `synth` fails distinctly; revert once confirmed
+  (confirmed in run 30176249219: a missing `:` in `network_stack.py`'s
+  `NetworkStack.__init__` signature failed `synth` with a `SyntaxError`;
+  reverted in commit 043ec3a, verified green again in run 30176290811)
 
 ## Secret scanning
 
