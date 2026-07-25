@@ -38,9 +38,9 @@ folder when you start it, not before):
 2. [x] `feat-02-platform-common-lib` — JWT verification, shared error
    envelope, logging with PII redaction (S-5). Pure backend, can run in
    parallel with #1.
-3. [ ] `feat-03-infra-network-data` — CDK `network_stack.py` +
-   `data_stack.py` (VPC, ALB, RDS, S3, Secrets Manager, SQS). No compute
-   yet; can also run in parallel with #1/#2.
+3. [x] `feat-03-infra-network-data` — CDK `network_stack.py` +
+   `data_stack.py` (VPC, ALB, RDS, Secrets Manager). No compute yet; can
+   also run in parallel with #1/#2.
 4. [ ] `feat-04-ci-pipelines` — flesh out the three service CI workflows +
    add frontend CI: lint, test, contract tests, docker build. Depends on
    #1 and #2 existing so there's something real to check.

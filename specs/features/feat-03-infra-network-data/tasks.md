@@ -59,15 +59,15 @@ Network additions → Docs → Verification & wrap-up.
 rather than standing on their own — deploy/verify, fix forward if anything's
 off, then close out the feature in the same commit.
 
-- [ ] `uv run cdk diff --all -c env=dev` against the real dev account
+- [x] `uv run cdk diff --all -c env=dev` against the real dev account
   (`453542520413`/`us-east-2`) — confirm the delta is exactly the new
   ALB/security-group resources, nothing unexpected on the existing
   VPC/RDS/secrets
-- [ ] `uv run cdk deploy --all -c env=dev` succeeds; confirm every
+- [x] `uv run cdk deploy --all -c env=dev` succeeds; confirm every
   new/existing `CfnOutput` resolves to a real resource
-- [ ] Confirm no secrets/credentials/account IDs are hardcoded anywhere
+- [x] Confirm no secrets/credentials/account IDs are hardcoded anywhere
   outside `cdk.json`'s non-secret context values (constitution T-4)
-- [ ] Update this feature's `spec.md`/`plan.md` if anything changed during
+- [x] Update this feature's `spec.md`/`plan.md` if anything changed during
   implementation (constitution W-1)
-- [ ] Check off the `feat-03-infra-network-data` line in
+- [x] Check off the `feat-03-infra-network-data` line in
   `specs/phases/roadmap.md`'s Phase 0 feature breakdown
