@@ -71,9 +71,18 @@ commit, so it's called out separately at the end.
 - [x] `install-and-lint` job: `npm --prefix frontend ci && npm --prefix
   frontend run lint`
 - [x] `test` job: `npm --prefix frontend run test -- --coverage`
-- [ ] Push a scratch commit with a deliberately failing lint rule, test, and
+- [x] Push a scratch commit with a deliberately failing lint rule, test, and
   coverage drop to confirm each fails its own job distinctly; revert once
-  confirmed
+  confirmed (confirmed across GH Actions runs 30175811332 and 30175898326:
+  `install-and-lint` failed independently on two unused-variable errors in
+  both runs; `test` failed on the broken assertion in the first run, then
+  — after fixing the assertion but keeping the uncovered helper in a
+  follow-up scratch commit — failed independently on the coverage threshold
+  (16.66% vs the configured 50% floor) in the second run. Frontend's coverage
+  threshold is 50%, not the 80% this task group originally said, per a
+  `// TODO: raise to 80%` already in `vite.config.js` — pre-existing gap, not
+  introduced here. Both scratch commits reverted in 775cf25/8aa6e8c, verified
+  green again in run 30175976212.)
 
 ## Infra CI
 
