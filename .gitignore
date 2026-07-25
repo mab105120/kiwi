@@ -3,3 +3,5 @@ local/
 cdk.out/
 __pycache__/
 *.pyc
+.coverage
+htmlcov/

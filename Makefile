@@ -15,7 +15,9 @@ lint-backend:
 	cd backend && uv run ruff check . && uv run mypy .
 
 test-backend:
-	cd backend && uv run pytest libs/platform_common services/identity services/app-api services/worker; status=$$?; [ $$status -eq 0 ] || [ $$status -eq 5 ]
+	cd backend && uv run pytest libs/platform_common services/identity services/app-api services/worker \
+		--cov=libs/platform_common --cov=services/identity/app --cov=services/app-api/app --cov=services/worker/app \
+		--cov-fail-under=80; status=$$?; [ $$status -eq 0 ] || [ $$status -eq 5 ]
 
 install-frontend:
 	npm --prefix frontend install
@@ -24,7 +26,7 @@ lint-frontend:
 	npm --prefix frontend run lint
 
 test-frontend:
-	npm --prefix frontend run test
+	npm --prefix frontend run test -- --coverage
 
 up:
 	docker-compose up -d
