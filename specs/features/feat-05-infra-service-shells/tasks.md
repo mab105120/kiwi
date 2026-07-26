@@ -10,15 +10,15 @@ depends on them).
 
 ## Cluster stack
 
-- [ ] Add `infra/stacks/cluster_stack.py`: `ClusterStack` creating
+- [x] Add `infra/stacks/cluster_stack.py`: `ClusterStack` creating
   `ecs.Cluster` in `NetworkStack`'s VPC (`vpc_subnets` not needed at cluster
   level — subnet placement happens per-service), named
   `f"{env_name}-kiwi-cluster"`
-- [ ] Export `CfnOutput`s for `ClusterName`/`ClusterArn`
-- [ ] Register `ClusterStack` in `stacks/__init__.py`
-- [ ] Instantiate `ClusterStack` in `app.py`, after `NetworkStack`, before
+- [x] Export `CfnOutput`s for `ClusterName`/`ClusterArn`
+- [x] Register `ClusterStack` in `stacks/__init__.py`
+- [x] Instantiate `ClusterStack` in `app.py`, after `NetworkStack`, before
   any service stack
-- [ ] Verify: `cd infra && uv run cdk synth` succeeds with `ClusterStack`
+- [x] Verify: `cd infra && uv run cdk synth` succeeds with `ClusterStack`
   alone added (service stacks don't exist yet this commit)
 
 ## Contract + route-prefix change

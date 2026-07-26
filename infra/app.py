@@ -1,5 +1,5 @@
 import aws_cdk as cdk
-from stacks import NetworkStack, DataStack
+from stacks import NetworkStack, DataStack, ClusterStack
 
 app = cdk.App()
 
@@ -18,6 +18,14 @@ aws_env = cdk.Environment(account=config["account"], region=config["region"])
 
 network_stack = NetworkStack(
     app, f"{env_name}-kiwi-vpc-stack", env_name=env_name, env=aws_env
+)
+
+cluster_stack = ClusterStack(
+    app,
+    f"{env_name}-kiwi-cluster-stack",
+    env_name=env_name,
+    vpc=network_stack.vpc,
+    env=aws_env,
 )
 
 data_stack = DataStack(
