@@ -26,10 +26,13 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["libs/platform_common", "services/identity/app", "services/app-api/app", "services/worker/app"]
+src = ["libs/platform_common", "services/identity/identity_app", "services/app-api/api_app", "services/worker/worker_app"]
 
 [tool.mypy]
 python_version = "3.12"

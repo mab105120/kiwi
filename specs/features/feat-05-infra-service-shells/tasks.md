@@ -23,33 +23,36 @@ depends on them).
 
 ## Contract + route-prefix change
 
-- [ ] Prefix `/healthz` in `contracts/identity.openapi.yaml` with
+- [x] Prefix `/healthz` in `contracts/identity.openapi.yaml` with
   `/identity` (`/healthz` → `/identity/healthz`)
-- [ ] Remove `contracts/identity.openapi.yaml`'s `/auth/token` stub
+- [x] Remove `contracts/identity.openapi.yaml`'s `/auth/token` stub
   entirely — no backing code anywhere in the repo (confirmed via grep), and
   Phase 1's Cognito-backed auth will very likely replace its guessed shape
   outright, so carrying a placeholder forward under a prefix risks it being
   mistaken for settled design
-- [ ] Populate `contracts/app-api/openapi.yml` (currently a 0-byte empty
+- [x] Populate `contracts/app-api/openapi.yml` (was a 0-byte empty
   file) with a minimal root OpenAPI 3.1 document declaring
   `/app-api/healthz`, matching `identity.openapi.yaml`'s shape — fixes the
   pre-existing P-1 drift where `app-api`'s working `/healthz` route had no
-  contract backing at all
-- [ ] Add `backend/services/identity/app/routes/health.py`: a
+  contract backing at all. Left 200-only (no `default`/error-response
+  entry) since the handler has no failure branch to document, and a
+  shared cross-service error-response schema is deferred to Phase 2 along
+  with the rest of `app-api`'s contract.
+- [x] Add `backend/services/identity/identity_app/routes/health.py`: a
   `health_bp = Blueprint("health", __name__, url_prefix="/identity")` with
   the `/healthz` route, logging a line via `current_app.logger.info(...)`
   on each hit (needed to make CloudWatch verification later meaningful,
   since gunicorn's entrypoint has no `--access-logfile` flag and won't
   print per-request access logs on its own)
-- [ ] Add `backend/services/app-api/app/routes/health.py`: same pattern,
-  `Blueprint("health", __name__, url_prefix="/app-api")`
-- [ ] Update `backend/services/identity/app/__init__.py` and
-  `backend/services/app-api/app/__init__.py` to import and
+- [x] Add `backend/services/app-api/api_app/routes/health.py`: same
+  pattern, `Blueprint("health", __name__, url_prefix="/app-api")`
+- [x] Update `backend/services/identity/identity_app/__init__.py` and
+  `backend/services/app-api/api_app/__init__.py` to import and
   `register_blueprint()` the new health blueprint instead of the inline
   `@app.get("/healthz")` — completing the structure each `__init__.py`'s
   own `TODO` and the already-scaffolded (empty) `app/routes/__init__.py`
   anticipated
-- [ ] Add a contract test to `backend/services/identity/tests/contract/`
+- [x] Add a contract test to `backend/services/identity/tests/contract/`
   and `backend/services/app-api/tests/contract/` (both currently empty
   `__init__.py` placeholders — this is the first test in each, not an
   update to an existing one) asserting `GET /identity/healthz` /
@@ -57,10 +60,39 @@ depends on them).
   contract declares — required by constitution Q-1 for the one endpoint
   this feature's contract change actually touches, not deferred to a later
   phase
-- [ ] Verify locally: `make test-backend` (or each service's contract test
-  target) passes; `curl localhost:<port>/identity/healthz` and
-  `curl localhost:<port>/app-api/healthz` return `{"status": "ok"}` against
-  each service run standalone (pre-ALB, direct-to-container sanity check)
+- [x] Rename each service's top-level Python package from the generic
+  `app` to a unique name (`identity_app`, `api_app`, `worker_app`) —
+  discovered while adding the contract tests above: `uv sync
+  --all-packages` installs all three services into one shared
+  `backend/.venv`, and since all three previously used the same import
+  name `app`, only one was ever reachable via `import app` at a time
+  (silently shadowing the others). This never surfaced before because no
+  test previously did a bare `from app import ...`, and production
+  containers each install only one service. Updated: each service's
+  `pyproject.toml` (`packages = [...]`), each `Dockerfile`'s gunicorn/
+  `python -m` entrypoint, internal imports, `migrations/env.py` comments,
+  `backend/pyproject.toml`'s ruff/mypy `src` list, `Makefile`'s and
+  `.github/workflows/backend-ci.yml`'s `--cov=` paths, and the affected
+  services' `CLAUDE.md` files.
+- [x] Added `[tool.pytest.ini_options] addopts = "--import-mode=importlib"`
+  to `backend/pyproject.toml` — needed once both services had a
+  `tests/contract/test_healthz.py`, since neither service's `tests/` dir
+  has an `__init__.py`, so both `contract` test packages collided under
+  the same bare module name in pytest's default import mode.
+- [x] Verify locally: `make test-backend` passes (16 passed); `curl
+  localhost:<port>/identity/healthz` and `curl
+  localhost:<port>/app-api/healthz` both return `{"status": "ok"}` with a
+  200 against each service run standalone via its Flask dev server
+  (pre-ALB, direct-to-container sanity check). **Known limitation**:
+  when both services' contract tests run in the same `pytest` session,
+  `pytest-cov` misreports the second-run service's `identity_app`/
+  `api_app` files as 0% covered, even though the test passes and the
+  route demonstrably executes (confirmed by running `coverage.py`
+  directly against both apps together, which reports 100% correctly for
+  both) — a `pytest-cov` measurement quirk, not an application bug.
+  Doesn't affect the `--cov-fail-under=80` gate today (aggregate coverage
+  is 89.92%); left undiagnosed further per explicit scope decision to move
+  on rather than chase it now.
 
 ## Identity service stack
 

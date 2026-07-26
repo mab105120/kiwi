@@ -16,7 +16,7 @@ lint-backend:
 
 test-backend:
 	cd backend && uv run pytest libs/platform_common services/identity services/app-api services/worker \
-		--cov=libs/platform_common --cov=services/identity/app --cov=services/app-api/app --cov=services/worker/app \
+		--cov=libs/platform_common --cov=services/identity/identity_app --cov=services/app-api/api_app --cov=services/worker/worker_app \
 		--cov-fail-under=80; status=$$?; [ $$status -eq 0 ] || [ $$status -eq 5 ]
 
 install-frontend:

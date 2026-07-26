@@ -5,7 +5,7 @@ Read `../../../CLAUDE.md` and `/constitution.md` first.
 ## What this service owns
 
 Exam authoring + hosting, assignment authoring, and feedback. Runs inline AI
-question-drafting synchronously (request/response, see `app/agents/`). Enqueues
+question-drafting synchronously (request/response, see `api_app/agents/`). Enqueues
 grading jobs onto SQS for `worker` to consume — the message shape is defined in
 `contracts/messages/grading-job.schema.json`, not an OpenAPI file. Its own HTTP
 contract is `contracts/app-api.openapi.yaml`.

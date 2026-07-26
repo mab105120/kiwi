@@ -14,7 +14,7 @@ dependencies = [
 platform-common = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
-packages = ["app"]
+packages = ["identity_app"]
 
 [build-system]
 requires = ["hatchling"]

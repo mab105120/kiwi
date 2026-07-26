@@ -10,7 +10,7 @@ def main() -> None:
     logger.info("worker starting")
     # TODO: poll the grading-job SQS queue (see
     # contracts/messages/grading-job.schema.json), dispatch each message to the
-    # appropriate agent in app.agents based on jobType, and write results back.
+    # appropriate agent in worker_app.agents based on jobType, and write results back.
 
 
 if __name__ == "__main__":
