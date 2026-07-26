@@ -7,5 +7,13 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.js'],
+    coverage: {
+      provider: 'v8',
+      // TODO: raise to 80% (spec target) once more frontend code/tests land.
+      thresholds: {
+        statements: 50,
+        lines: 50,
+      },
+    },
   },
 })

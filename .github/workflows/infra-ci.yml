@@ -1,0 +1,23 @@
+name: Infra CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+jobs:
+  synth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: |
+          cd infra
+          uv sync
+          npm install -g aws-cdk
+      - name: Synth
+        run: cd infra && uv run cdk synth
