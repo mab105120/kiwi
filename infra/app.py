@@ -1,5 +1,5 @@
 import aws_cdk as cdk
-from stacks import NetworkStack, DataStack, ClusterStack
+from stacks import NetworkStack, DataStack, ClusterStack, IdentityServiceStack
 
 app = cdk.App()
 
@@ -36,6 +36,17 @@ data_stack = DataStack(
     network_stack.vpc,
     network_stack.db_security_group,
     network_stack.lambda_security_group,
+    env=aws_env,
+)
+
+identity_service_stack = IdentityServiceStack(
+    app,
+    f"{env_name}-kiwi-identity-service-stack",
+    env_name=env_name,
+    cluster=cluster_stack.cluster,
+    vpc=network_stack.vpc,
+    security_group=network_stack.fargate_services_security_group,
+    alb=network_stack.alb,
     env=aws_env,
 )
 

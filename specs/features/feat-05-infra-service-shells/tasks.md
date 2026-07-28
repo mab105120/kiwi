@@ -96,31 +96,49 @@ depends on them).
 
 ## Identity service stack
 
-- [ ] Add `infra/stacks/_fargate_service.py`: `FargateWebService(Construct)`
+- [x] Add `infra/stacks/_fargate_service.py`: `KiwiFargateWebService(Construct)`
   — a proper CDK construct (not a bare helper function), the idiomatic CDK
   reuse pattern for something instantiated three times across three
-  stacks. Constructor: `FargateWebService(scope, id, *, cluster, vpc,
-  security_group, alb, image_asset_dir, dockerfile, container_port,
-  health_check_path, path_prefix, env_name)`; builds resources against
-  `self`, exposing `self.service`/`self.target_group` as attributes.
-  Internally creates a `FargateTaskDefinition` + container (CDK asset image
-  from `backend/`, `services/<name>/Dockerfile`) + `awslogs` log group +
-  `FargateService`
-- [ ] Add `infra/stacks/identity_service_stack.py`: `IdentityServiceStack`
-  using `FargateWebService` for `identity`; creates the shared ALB listener
-  on port 80 (`elbv2.ApplicationListener`) and an `ApplicationTargetGroup` +
-  `ApplicationListenerRule` matching `path_pattern=["/identity/*"]`, health
-  check path `/identity/healthz`
-- [ ] Set the listener's default action to
+  stacks. Named `KiwiFargateWebService` (not `FargateWebService`) to avoid
+  reading as a near-duplicate of `ecs.FargateService`, which it wraps and
+  exposes as `self.service` — consistent with this repo's existing
+  `{env_name}-kiwi-...` resource-naming convention. Constructor:
+  `KiwiFargateWebService(scope, id, *, cluster, vpc, security_group,
+  image_asset_dir, dockerfile, container_port, health_check_path,
+  env_name)` — dropped `alb`/`path_prefix` from the originally-planned
+  signature since neither is used inside the construct (listener/rule
+  wiring is stack-level, not construct-level); keeping unused params would
+  just be dead code. Builds resources against `self`, exposing
+  `self.service`/`self.target_group` as attributes. Internally creates a
+  `FargateTaskDefinition` + container (CDK asset image from `backend/`,
+  `services/<name>/Dockerfile`) + `awslogs` log group + `FargateService`
+  with `circuit_breaker=ecs.DeploymentCircuitBreaker(rollback=True)` (cheap
+  fast-fail on bad deployments; CDK warns without it). Left
+  `minHealthyPercent` at its default (50%, meaning a momentary zero-task
+  window during deploys with `desired_count=1`) since fixing it properly
+  needs a second task, which `spec.md`'s "Out of scope" already defers to
+  Phase 12.
+- [x] Add `infra/stacks/identity_service_stack.py`: `IdentityServiceStack`
+  using `KiwiFargateWebService` for `identity`; creates the shared ALB
+  listener on port 80 (`elbv2.ApplicationListener`, via `alb.add_listener`)
+  and an `ApplicationListenerRule` matching `path_pattern=["/identity/*"]`
+  forwarding to the construct's `target_group`, health check path
+  `/identity/healthz`
+- [x] Set the listener's default action to
   `elbv2.ListenerAction.fixed_response(404, ...)` (explicit "no prefix
   matched" response, set here since this stack creates the listener first)
-- [ ] Register `IdentityServiceStack` in `stacks/__init__.py`; instantiate
+- [x] Register `IdentityServiceStack` in `stacks/__init__.py`; instantiate
   in `app.py`, taking `NetworkStack`'s VPC/ALB/`fargate-services-sg` and
   `ClusterStack`'s cluster as inputs
-- [ ] Verify: `cdk synth` succeeds; `cdk deploy ClusterStack
-  IdentityServiceStack -c env=dev`; target group reports healthy; `curl
-  http://<alb-dns>/identity/healthz` returns `{"status": "ok"}` with a 200
-  through the ALB
+- [x] Verify: `cd infra && uv run cdk synth` succeeds with all four stacks
+  (`dev-kiwi-vpc-stack`, `dev-kiwi-cluster-stack`, `dev-kiwi-db-stack`,
+  `dev-kiwi-identity-service-stack`).
+- [ ] Verify: `cdk deploy ClusterStack IdentityServiceStack -c env=dev`;
+  target group reports healthy; `curl http://<alb-dns>/identity/healthz`
+  returns `{"status": "ok"}` with a 200 through the ALB. **Not yet run** —
+  needs real AWS credentials and a running Docker daemon (for the CDK asset
+  image build), neither available in this environment; needs to be run
+  manually before this task group is fully complete.
 
 ## App-api service stack
 
