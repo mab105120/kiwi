@@ -182,9 +182,17 @@ paths.
   image pipeline is `feat-07-deploy-pipeline`.
 - **`frontend_stack.py`** (S3 + CloudFront) — `feat-06-infra-frontend-shell`.
 - **Instantiating `cicd_stack.py`** in `app.py` — still `feat-07`.
-- **HTTPS/TLS on the ALB, a custom domain, or Route53.** `feat-03` already
-  deferred this; this feature doesn't need it either since there's still no
-  real user-facing traffic to protect.
+- **HTTPS/TLS on the ALB's client-facing listener, a custom domain, or
+  Route53.** `feat-03` already deferred this; this feature doesn't need it
+  either since there's still no real user-facing traffic to protect. Note
+  this is specifically about the ALB *listener* (client → ALB) — the ALB →
+  task hop on the target group is `HTTP` regardless and stays that way even
+  after TLS is added on the listener side, since that hop never leaves the
+  private VPC (standard terminate-TLS-at-the-load-balancer pattern). Getting
+  a real listener certificate needs an owned domain + ACM + likely Route53,
+  none of which exist in this repo yet; tracked as a named bullet under
+  Phase 12 (`specs/phases/roadmap.md`) rather than assigned to any feature
+  yet.
 - **Autoscaling policies, CloudWatch alarms/dashboards, or multi-task
   redundancy.** One task per service is enough to prove the deploy path;
   scaling is a Phase 12 hardening concern.
