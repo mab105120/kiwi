@@ -17,27 +17,40 @@ definition), `Service` (keeps N tasks running, optionally attached to an ALB
 target group), `Target Group` (pool of task IPs + a health check), `Listener
 Rule` (decides which target group a request goes to, by path pattern here).
 
-**1. `cluster_stack.py` — shared ECS cluster, its own stack**
+**1. `shared_services_stack.py` — shared ECS cluster + ALB listener, its own
+stack**
 
-- `ClusterStack` creates `ecs.Cluster(self, "Cluster", vpc=vpc,
-  cluster_name=f"{env_name}-kiwi-cluster")` and exports `CfnOutput`s for
-  `cluster_name`/`cluster_arn`. Takes `NetworkStack`'s VPC as its only
-  constructor input.
-- `IdentityServiceStack`, `AppApiServiceStack`, and `WorkerServiceStack` each
-  take the cluster (via `ecs.Cluster.from_cluster_attributes(...)`, built
-  from `ClusterStack`'s outputs, or the live object reference if `app.py`
-  wires them directly) as a constructor input alongside `NetworkStack`'s
-  VPC/security group.
-- **Why a dedicated stack instead of one service stack owning it:** a
-  cluster is cheap to reason about (a namespace, not a security boundary),
-  so it doesn't need much ceremony — but having any one service stack own a
-  resource the other two depend on means destroying that one stack breaks
-  the other two. A separate `ClusterStack` means all three service stacks
-  are true siblings: each depends only on `ClusterStack` + `NetworkStack`,
-  never on each other, and no service's lifecycle is coupled to another
-  service's. This mirrors `NetworkStack` → `DataStack`'s existing shape —
-  a foundational stack multiple things build on, not one peer owning a
-  resource for another peer.
+- `SharedServicesStack` creates `ecs.Cluster(self, "Cluster", vpc=vpc,
+  cluster_name=f"{env_name}-kiwi-cluster")` **and** the shared
+  `elbv2.ApplicationListener` (port 80, default action
+  `fixed_response(404, ...)`) via `alb.add_listener(...)`, exporting
+  `CfnOutput`s for `cluster_name`/`cluster_arn`/`listener_arn`. Takes
+  `NetworkStack`'s VPC and ALB as constructor inputs.
+- `IdentityServiceStack` and `AppApiServiceStack` each take the cluster and
+  the listener (live object references, via `app.py`'s direct wiring) as
+  constructor inputs alongside `NetworkStack`'s VPC/security group, and each
+  only adds its own `ApplicationListenerRule` (distinct priority per
+  service — `10` for identity, `20` for app-api) onto that shared listener.
+  `WorkerServiceStack` takes only the cluster, since `worker` has no ALB
+  attachment at all.
+- **Why a dedicated stack instead of one service stack owning these:**
+  originally scoped as cluster-only (see history below), but implementation
+  surfaced the identical coupling problem for the ALB listener. The first
+  draft had `IdentityServiceStack` create the shared listener directly
+  (`alb.add_listener(...)`) and had `AppApiServiceStack` reference it via a
+  constructor parameter. That's a real bug, not just a design smell: CDK
+  cross-stack references become CloudFormation exports/imports, and
+  CloudFormation refuses to delete a stack whose export is still imported
+  elsewhere — so `cdk destroy IdentityServiceStack` would fail outright
+  (not just silently break routing) as long as `AppApiServiceStack`
+  imports its listener, defeating the entire "service stacks are true
+  siblings" goal this stack already existed to guarantee for the cluster.
+  Folding the listener into the same shared, no-single-owner stack as the
+  cluster fixes it the same way: both are resources every service stack
+  depends on but none of them creates, so neither can couple one service's
+  teardown to another's.
+- Renamed from `ClusterStack` to `SharedServicesStack` once its scope grew
+  beyond just the cluster, to keep the name honest about what it now owns.
 
 **2. Contract + route-registration change for `identity` and `app-api`**
 
@@ -115,7 +128,7 @@ step, before any CDK code touches these two services:
 **3. `identity_service_stack.py` and `app_api_service_stack.py`**
 
 - `stacks/_fargate_service.py`: a proper CDK `Construct` subclass
-  (`FargateWebService(Construct)`), not a bare helper function — this is
+  (`KiwiFargateWebService(Construct)`), not a bare helper function — this is
   the idiomatic CDK reuse pattern (it's how the CDK's own standard-library
   constructs, like `ApplicationLoadBalancedFargateService`, are built), and
   it's barely more code than a function: `super().__init__(scope, id)`,
@@ -125,9 +138,23 @@ step, before any CDK code touches these two services:
   shape is instantiated three times across three different stacks — each
   instance gets its own clean logical-ID namespace under its construct id
   automatically, which a bare function would require managing by hand.
-  Constructor signature: `FargateWebService(scope, id, *, cluster, vpc,
-  security_group, alb, image_asset_dir, dockerfile, container_port,
-  health_check_path, path_prefix, env_name)`; internally creates:
+  Named `KiwiFargateWebService` rather than `FargateWebService` to avoid
+  reading as a near-duplicate of `ecs.FargateService`, which it wraps and
+  exposes as `self.service` — consistent with this repo's existing
+  `{env_name}-kiwi-...` resource-naming convention.
+  Constructor signature: `KiwiFargateWebService(scope, id, *, cluster, vpc,
+  security_group, image_asset_dir, dockerfile, container_port,
+  health_check_path, env_name)` — dropped `alb`/`path_prefix` from the
+  originally-planned signature since neither is used inside the construct;
+  listener/rule wiring against the shared listener is stack-level work
+  (see section 1's `SharedServicesStack`), and unused constructor
+  parameters are dead code. `desired_count=1`'s
+  `FargateService` also sets `circuit_breaker=ecs.DeploymentCircuitBreaker(
+  rollback=True)` — cheap fast-fail on bad deployments (CDK warns without
+  it); `minHealthyPercent` is left at its 50% default, meaning a momentary
+  zero-task window during deploys, since fixing that properly needs a
+  second task, which `spec.md`'s "Out of scope" already defers to Phase 12.
+  Internally creates:
   - `ecs.FargateTaskDefinition` (256 CPU / 512 MiB memory — the smallest
     valid Fargate combination, plenty for a `gunicorn` process serving one
     route).
@@ -161,16 +188,18 @@ step, before any CDK code touches these two services:
     since two services need to share one ALB with routing rules between
     them, which that higher-level construct doesn't cleanly support.
 - **ALB listener + rules**: one shared `elbv2.ApplicationListener` on port
-  80 (created by whichever of these two stacks is deployed first, or in
-  `ClusterStack` if that turns out cleaner — a small implementation detail
-  to settle while coding, not a design question). Two
-  `elbv2.ApplicationListenerRule`s, matching `path_pattern=["/identity/*"]`
-  and `path_pattern=["/app-api/*"]`, forwarding to each service's target
-  group. Default action (no path matches): `elbv2.ListenerAction.
-  fixed_response(404, content_type="text/plain", message_body="not
-  found")` — explicit and correct now that the two prefixes are mutually
-  exclusive, rather than silently defaulting into one service's target
-  group.
+  80, created in `SharedServicesStack` (see section 1 — not owned by either
+  service stack, precisely to avoid the destroy-coupling bug that surfaced
+  when it was first tried inside `IdentityServiceStack`). Each service
+  stack adds its own `elbv2.ApplicationListenerRule` against that shared
+  listener — `path_pattern=["/identity/*"]` (priority `10`) and
+  `path_pattern=["/app-api/*"]` (priority `20`; AWS requires unique
+  priorities per listener) — forwarding to its own target group. Default
+  action (no path matches), set once in `SharedServicesStack`:
+  `elbv2.ListenerAction.fixed_response(404, content_type="application/json",
+  message_body='{"error": "not found"}')` — explicit and correct now that
+  the two prefixes are mutually exclusive, rather than silently defaulting
+  into one service's target group.
 
 **4. `worker_service_stack.py`**
 
@@ -201,19 +230,20 @@ step, before any CDK code touches these two services:
 **5. `infra/CLAUDE.md`**
 
 - Move `identity_service_stack.py`/`app_api_service_stack.py`/
-  `worker_service_stack.py`/`cluster_stack.py` out of the "Not yet present"
-  list into the stack-by-stack description; document `ClusterStack`'s role
-  and the `/identity`/`/app-api` path-prefix ALB routing convention, with
-  the plain `curl http://<alb-dns>/identity/healthz` invocation as how to
-  reach each service (no special headers needed).
+  `worker_service_stack.py`/`shared_services_stack.py` out of the "Not yet
+  present" list into the stack-by-stack description; document
+  `SharedServicesStack`'s role (cluster + shared ALB listener, owned by
+  neither service) and the `/identity`/`/app-api` path-prefix ALB routing
+  convention, with the plain `curl http://<alb-dns>/identity/healthz`
+  invocation as how to reach each service (no special headers needed).
 
 **6. Verify end-to-end**
 
 - `cd infra && uv run cdk synth` — confirms all four new stacks synthesize,
-  with the three service stacks correctly resolving `ClusterStack`'s
-  exported cluster reference.
-- `uv run cdk deploy ClusterStack IdentityServiceStack -c env=dev` first
-  (proves the "one service stack deploys independently" acceptance
+  with the three service stacks correctly resolving `SharedServicesStack`'s
+  exported cluster/listener references.
+- `uv run cdk deploy SharedServicesStack IdentityServiceStack -c env=dev`
+  first (proves the "one service stack deploys independently" acceptance
   criterion architecturally); confirm its target group reports healthy via
   `curl http://<alb-dns>/identity/healthz`.
 - `uv run cdk deploy AppApiServiceStack WorkerServiceStack -c env=dev`;
@@ -260,22 +290,26 @@ step, before any CDK code touches these two services:
 
 ## Sequencing
 
-1. `ClusterStack`: shared ECS cluster, independent of any service stack.
+1. `SharedServicesStack`: shared ECS cluster + shared ALB listener,
+   independent of any service stack.
 2. Contract + route-registration change: prefix `/healthz` in
    `contracts/identity.openapi.yaml` and `contracts/app-api/openapi.yml`
    (fixing the latter's empty-file drift), remove `identity.openapi.yaml`'s
    unimplemented `/auth/token` stub, add each service's dedicated health
    blueprint module + contract test — lands before any CDK service stack,
    per constitution P-1.
-3. `IdentityServiceStack`: `_fargate_service.py`'s `FargateWebService`
-   construct introduced here (identity built first); ALB listener +
-   `/identity/*` rule.
-4. `AppApiServiceStack`: reuses the construct and `ClusterStack`'s cluster
-   reference; adds the `/app-api/*` listener rule alongside identity's.
+3. `IdentityServiceStack`: `_fargate_service.py`'s `KiwiFargateWebService`
+   construct introduced here (identity built first); adds the
+   `/identity/*` listener rule (priority `10`) onto `SharedServicesStack`'s
+   listener.
+4. `AppApiServiceStack`: reuses the construct and `SharedServicesStack`'s
+   cluster/listener references; adds the `/app-api/*` listener rule
+   (priority `20`) alongside identity's.
 5. `worker/app/worker.py` keep-alive fix, then `WorkerServiceStack`
    (no ALB attachment, command-based container health check).
-6. `infra/CLAUDE.md` rewrite covering the cluster stack, all three service
-   stacks, and the path-prefix routing convention.
-7. Deploy `ClusterStack` + identity alone, verify; deploy app-api + worker,
-   verify all acceptance criteria including CloudWatch Logs, worker's
-   steady-state task count, and the destroy-identity-alone decoupling test.
+6. `infra/CLAUDE.md` rewrite covering the shared services stack, all three
+   service stacks, and the path-prefix routing convention.
+7. Deploy `SharedServicesStack` + identity alone, verify; deploy app-api +
+   worker, verify all acceptance criteria including CloudWatch Logs,
+   worker's steady-state task count, and the destroy-identity-alone
+   decoupling test.

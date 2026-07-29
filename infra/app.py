@@ -1,5 +1,11 @@
 import aws_cdk as cdk
-from stacks import NetworkStack, DataStack, ClusterStack, IdentityServiceStack
+from stacks import (
+    NetworkStack,
+    DataStack,
+    SharedServicesStack,
+    IdentityServiceStack,
+    AppApiServiceStack,
+)
 
 app = cdk.App()
 
@@ -20,11 +26,12 @@ network_stack = NetworkStack(
     app, f"{env_name}-kiwi-vpc-stack", env_name=env_name, env=aws_env
 )
 
-cluster_stack = ClusterStack(
+shared_services_stack = SharedServicesStack(
     app,
-    f"{env_name}-kiwi-cluster-stack",
+    f"{env_name}-kiwi-shared-services-stack",
     env_name=env_name,
     vpc=network_stack.vpc,
+    alb=network_stack.alb,
     env=aws_env,
 )
 
@@ -43,10 +50,21 @@ identity_service_stack = IdentityServiceStack(
     app,
     f"{env_name}-kiwi-identity-service-stack",
     env_name=env_name,
-    cluster=cluster_stack.cluster,
+    cluster=shared_services_stack.cluster,
     vpc=network_stack.vpc,
     security_group=network_stack.fargate_services_security_group,
-    alb=network_stack.alb,
+    listener=shared_services_stack.listener,
+    env=aws_env,
+)
+
+app_api_service_stack = AppApiServiceStack(
+    app,
+    f"{env_name}-kiwi-app-api-service-stack",
+    env_name=env_name,
+    cluster=shared_services_stack.cluster,
+    vpc=network_stack.vpc,
+    security_group=network_stack.fargate_services_security_group,
+    listener=shared_services_stack.listener,
     env=aws_env,
 )
 

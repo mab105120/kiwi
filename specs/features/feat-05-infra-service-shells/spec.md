@@ -76,28 +76,30 @@ paths.
 
 ## Scope
 
-- **Four new CDK stacks** under `infra/stacks/`: a shared `cluster_stack.py`
-  plus one stack per backend service — `identity_service_stack.py`,
-  `app_api_service_stack.py`, `worker_service_stack.py` — matching the
-  service-stack layout `infra/CLAUDE.md` already anticipates, plus the
-  small cluster stack the three service stacks depend on. Each service
-  stack is deployed/updated/destroyed independently (its own CloudFormation
-  stack), so a change to one service's task definition can't block or
-  blast-radius the other two; all three depend only on `cluster_stack.py`
-  and `NetworkStack`, never on each other, so no service stack's lifecycle
-  is coupled to another service's. Each takes `NetworkStack`'s VPC,
-  `fargate-services-sg`, `cluster_stack.py`'s cluster, and (for
-  `identity`/`app-api`) the ALB as constructor inputs — the same
-  dependency-injection pattern `DataStack` already uses for VPC/security
-  groups.
+- **Four new CDK stacks** under `infra/stacks/`: a shared
+  `shared_services_stack.py` plus one stack per backend service —
+  `identity_service_stack.py`, `app_api_service_stack.py`,
+  `worker_service_stack.py` — matching the service-stack layout
+  `infra/CLAUDE.md` already anticipates, plus the small shared-services
+  stack the three service stacks depend on. Each service stack is
+  deployed/updated/destroyed independently (its own CloudFormation stack),
+  so a change to one service's task definition can't block or blast-radius
+  the other two; all three depend only on `shared_services_stack.py` and
+  `NetworkStack`, never on each other, so no service stack's lifecycle is
+  coupled to another service's. Each takes `NetworkStack`'s VPC,
+  `fargate-services-sg`, and `shared_services_stack.py`'s cluster as
+  constructor inputs (plus, for `identity`/`app-api`, its shared ALB
+  listener) — the same dependency-injection pattern `DataStack` already
+  uses for VPC/security groups.
   - `identity_service_stack.py` and `app_api_service_stack.py`: an ECS
     Fargate service each, registered with an ALB target group whose health
     check path is `/identity/healthz` / `/app-api/healthz` respectively (see
-    "Routing design" above for the prefix). ALB listener rules route by path
-    pattern (`/identity/*`, `/app-api/*`) to each service's target group —
-    this spec requires that each service is independently reachable through
-    the existing ALB by its own path prefix and that its target group
-    reports healthy.
+    "Routing design" above for the prefix). Each adds its own ALB listener
+    rule (distinct priority per service) onto `shared_services_stack.py`'s
+    listener, routing by path pattern (`/identity/*`, `/app-api/*`) to its
+    own target group — this spec requires that each service is
+    independently reachable through the existing ALB by its own path
+    prefix and that its target group reports healthy.
   - `worker_service_stack.py`: an ECS Fargate service with **no** ALB
     target group, listener, or listener rule — it is not internet- or
     ALB-reachable at all, consistent with `backend/services/worker/CLAUDE.md`.
@@ -106,14 +108,20 @@ paths.
     ALB health check.
   - Common CDK shape shared by the three service stacks (task-definition
     scaffolding, log-group setup) is factored into a small shared CDK
-    `Construct` (e.g. `stacks/_fargate_service.py`'s `FargateWebService`)
-    rather than copy-pasted three times — an implementation detail for
-    `plan.md`, not a fifth stack.
-- **A shared ECS cluster**, defined once in its own `cluster_stack.py` (not
-  owned by any one service stack, so destroying one service stack never
-  affects the others' ability to run), placed in the VPC's private subnets —
-  the same `PRIVATE_WITH_EGRESS` subnets `feat-03` already created and
-  exposed as a `CfnOutput`.
+    `Construct` (e.g. `stacks/_fargate_service.py`'s `KiwiFargateWebService`
+    — named to avoid reading as a near-duplicate of the `ecs.FargateService`
+    it wraps) rather than copy-pasted three times — an implementation detail
+    for `plan.md`, not a fifth stack.
+- **A shared ECS cluster and ALB listener**, both defined once in
+  `shared_services_stack.py` (not owned by any one service stack, so
+  destroying one service stack never affects the others' ability to run —
+  this applies to the listener too: an earlier draft had `identity`'s stack
+  create the shared listener directly, which would have made
+  `AppApiServiceStack`'s listener-rule reference block `identity`'s stack
+  from ever being destroyed independently, defeating the whole point).
+  Cluster is placed in the VPC's private subnets — the same
+  `PRIVATE_WITH_EGRESS` subnets `feat-03` already created — and both are
+  exposed as `CfnOutput`s.
 - **Contract + route-registration changes for `identity` and `app-api`**
   (see "Routing design" above): prefix `/healthz` in
   `contracts/identity.openapi.yaml` with `/identity` and in
@@ -210,11 +218,12 @@ paths.
 ## Acceptance criteria
 
 - [ ] `cd infra && cdk synth` succeeds with `app.py` instantiating
-  `ClusterStack`, `IdentityServiceStack`, `AppApiServiceStack`, and
+  `SharedServicesStack`, `IdentityServiceStack`, `AppApiServiceStack`, and
   `WorkerServiceStack`, in addition to the existing `NetworkStack`/
-  `DataStack`, each service stack taking its VPC/security-group/ALB/cluster
-  inputs from `NetworkStack`'s and `ClusterStack`'s outputs (no duplicate
-  VPC, cluster, or security-group creation across stacks).
+  `DataStack`, each service stack taking its VPC/security-group/listener/
+  cluster inputs from `NetworkStack`'s and `SharedServicesStack`'s outputs
+  (no duplicate VPC, cluster, listener, or security-group creation across
+  stacks).
 - [ ] `contracts/identity.openapi.yaml` and `contracts/app-api/openapi.yml`
   declare all paths under `/identity` and `/app-api` respectively (including
   `/app-api/healthz`, previously missing entirely); each service's
@@ -241,11 +250,12 @@ paths.
 - [ ] `cdk deploy IdentityServiceStack -c env=dev` (or any one service stack
   alone) succeeds without requiring a redeploy of the other two service
   stacks — confirming they're genuinely independent stacks, not one stack
-  split across files, and not coupled to each other (only to `ClusterStack`).
+  split across files, and not coupled to each other (only to
+  `SharedServicesStack`).
 - [ ] Destroying any one service stack (e.g. `cdk destroy
   IdentityServiceStack -c env=dev`) does not affect the other two service
-  stacks' ability to keep running — confirming the cluster's independence
-  from any single service's lifecycle.
+  stacks' ability to keep running — confirming the shared cluster and
+  listener's independence from any single service's lifecycle.
 - [ ] `cdk destroy --all -c env=dev` tears down all four new stacks cleanly
   with no orphaned ECS services, task definitions, clusters, or target
   groups.

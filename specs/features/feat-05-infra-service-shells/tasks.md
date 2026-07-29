@@ -1,25 +1,40 @@
 # Tasks: Infra Service Shells
 
 Seven groups below, each intended as its own commit, in the order
-`plan.md`'s Sequencing lays out: Cluster stack → Contract/route-prefix
+`plan.md`'s Sequencing lays out: Shared services stack → Contract/route-prefix
 change → Identity service stack → App-api service stack → Worker keep-alive
 + service stack → Docs → Verification & wrap-up. Contract/route work is
 deliberately its own commit *before* any service-stack CDK code, per
 constitution P-1 (boundary changes land before the implementation code that
 depends on them).
 
-## Cluster stack
+## Shared services stack
 
-- [x] Add `infra/stacks/cluster_stack.py`: `ClusterStack` creating
-  `ecs.Cluster` in `NetworkStack`'s VPC (`vpc_subnets` not needed at cluster
-  level — subnet placement happens per-service), named
+- [x] Add `infra/stacks/shared_services_stack.py`: `SharedServicesStack`
+  creating `ecs.Cluster` in `NetworkStack`'s VPC (`vpc_subnets` not needed
+  at cluster level — subnet placement happens per-service), named
   `f"{env_name}-kiwi-cluster"`
 - [x] Export `CfnOutput`s for `ClusterName`/`ClusterArn`
-- [x] Register `ClusterStack` in `stacks/__init__.py`
-- [x] Instantiate `ClusterStack` in `app.py`, after `NetworkStack`, before
-  any service stack
-- [x] Verify: `cd infra && uv run cdk synth` succeeds with `ClusterStack`
+- [x] Register `SharedServicesStack` in `stacks/__init__.py`
+- [x] Instantiate `SharedServicesStack` in `app.py`, after `NetworkStack`,
+  before any service stack
+- [x] Verify: `cd infra && uv run cdk synth` succeeds with `SharedServicesStack`
   alone added (service stacks don't exist yet this commit)
+- [x] **Mid-implementation addition** (originally its own bullet under
+  "Identity service stack" below, moved here): also creates the shared ALB
+  listener (`alb.add_listener(...)`, port 80, default
+  `fixed_response(404, ...)`), exported as `CfnOutput` `ListenerArn`.
+  Originally planned inside `IdentityServiceStack` (built first), but that
+  design had `AppApiServiceStack` reference identity's listener via a
+  constructor parameter — a real bug, not just a smell: CDK cross-stack
+  references become CloudFormation exports/imports, and CloudFormation
+  refuses to delete a stack whose export is still imported elsewhere, so
+  `cdk destroy IdentityServiceStack` would fail outright as long as
+  `app-api` imports its listener. Caught during app-api implementation;
+  fixed by moving the listener into this already-existing "owned by no
+  service" stack, same rationale as the cluster itself. Renamed
+  `ClusterStack` → `SharedServicesStack` to keep the name honest about the
+  broadened scope.
 
 ## Contract + route-prefix change
 
@@ -119,41 +134,53 @@ depends on them).
   needs a second task, which `spec.md`'s "Out of scope" already defers to
   Phase 12.
 - [x] Add `infra/stacks/identity_service_stack.py`: `IdentityServiceStack`
-  using `KiwiFargateWebService` for `identity`; creates the shared ALB
-  listener on port 80 (`elbv2.ApplicationListener`, via `alb.add_listener`)
-  and an `ApplicationListenerRule` matching `path_pattern=["/identity/*"]`
-  forwarding to the construct's `target_group`, health check path
-  `/identity/healthz`
-- [x] Set the listener's default action to
-  `elbv2.ListenerAction.fixed_response(404, ...)` (explicit "no prefix
-  matched" response, set here since this stack creates the listener first)
+  using `KiwiFargateWebService` for `identity`; takes `SharedServicesStack`'s
+  listener as a constructor input (does **not** create its own — see the
+  "Shared services stack" section above for why) and adds an
+  `ApplicationListenerRule` (priority `10`) matching
+  `path_pattern=["/identity/*"]` forwarding to the construct's
+  `target_group`, health check path `/identity/healthz`
+- [x] Listener's default action (`elbv2.ListenerAction.fixed_response(404,
+  ...)`, explicit "no prefix matched" response) lives in
+  `SharedServicesStack` — see above — not this stack.
 - [x] Register `IdentityServiceStack` in `stacks/__init__.py`; instantiate
-  in `app.py`, taking `NetworkStack`'s VPC/ALB/`fargate-services-sg` and
-  `ClusterStack`'s cluster as inputs
-- [x] Verify: `cd infra && uv run cdk synth` succeeds with all four stacks
-  (`dev-kiwi-vpc-stack`, `dev-kiwi-cluster-stack`, `dev-kiwi-db-stack`,
-  `dev-kiwi-identity-service-stack`).
-- [ ] Verify: `cdk deploy ClusterStack IdentityServiceStack -c env=dev`;
-  target group reports healthy; `curl http://<alb-dns>/identity/healthz`
-  returns `{"status": "ok"}` with a 200 through the ALB. **Not yet run** —
-  needs real AWS credentials and a running Docker daemon (for the CDK asset
-  image build), neither available in this environment; needs to be run
-  manually before this task group is fully complete.
+  in `app.py`, taking `NetworkStack`'s VPC/`fargate-services-sg` and
+  `SharedServicesStack`'s cluster/listener as inputs
+- [x] Verify: `cd infra && uv run cdk synth` succeeds with all five stacks
+  (`dev-kiwi-vpc-stack`, `dev-kiwi-shared-services-stack`, `dev-kiwi-db-stack`,
+  `dev-kiwi-identity-service-stack`, `dev-kiwi-app-api-service-stack`).
+- [ ] Verify: `cdk deploy SharedServicesStack IdentityServiceStack -c
+  env=dev`; target group reports healthy; `curl
+  http://<alb-dns>/identity/healthz` returns `{"status": "ok"}` with a 200
+  through the ALB. **Not yet run** — needs real AWS credentials and a
+  running Docker daemon (for the CDK asset image build), neither available
+  in this environment; needs to be run manually before this task group is
+  fully complete.
 
 ## App-api service stack
 
-- [ ] Add `infra/stacks/app_api_service_stack.py`: `AppApiServiceStack`
-  reusing `FargateWebService` for `app-api`; adds an
-  `ApplicationListenerRule` on identity's existing listener matching
-  `path_pattern=["/app-api/*"]`, health check path `/app-api/healthz`
-- [ ] Register in `stacks/__init__.py`; instantiate in `app.py`, taking the
-  same shared inputs as `IdentityServiceStack` plus a reference to the
-  listener `IdentityServiceStack` created
-- [ ] Verify: `cdk synth` succeeds; `cdk deploy AppApiServiceStack -c
-  env=dev`; target group reports healthy; `curl http://<alb-dns>/app-api/
-  healthz` returns `{"status": "ok"}` with a 200 through the ALB, and
-  `/identity/healthz` still resolves correctly (confirms the two listener
-  rules don't collide)
+- [x] Add `infra/stacks/app_api_service_stack.py`: `AppApiServiceStack`
+  reusing `KiwiFargateWebService` for `app-api`; takes `SharedServicesStack`'s
+  listener as a constructor input (same pattern as identity, for the same
+  destroy-independence reason) and adds an `ApplicationListenerRule`
+  (priority `20` — distinct from identity's `10`, since AWS requires unique
+  priorities per listener) matching `path_pattern=["/app-api/*"]`, health
+  check path `/app-api/healthz`
+- [x] Register in `stacks/__init__.py`; instantiate in `app.py`, taking the
+  same shared inputs as `IdentityServiceStack`
+  (`SharedServicesStack`'s cluster/listener, `NetworkStack`'s VPC/
+  `fargate-services-sg`)
+- [x] Verify: `cd infra && uv run cdk synth` succeeds; synthesized templates
+  for both `dev-kiwi-identity-service-stack` and
+  `dev-kiwi-app-api-service-stack` each contain their own
+  `AWS::ElasticLoadBalancingV2::ListenerRule` referencing the one shared
+  listener via cross-stack import.
+- [ ] Verify: `cdk deploy AppApiServiceStack -c env=dev`; target group
+  reports healthy; `curl http://<alb-dns>/app-api/healthz` returns
+  `{"status": "ok"}` with a 200 through the ALB, and `/identity/healthz`
+  still resolves correctly (confirms the two listener rules don't collide).
+  **Not yet run** — same reason as identity's live-deploy verification
+  above.
 
 ## Worker keep-alive + service stack
 
@@ -162,15 +189,15 @@ depends on them).
   comment marking it as a Phase-0 placeholder Phase 6's real SQS polling
   loop replaces outright
 - [ ] Add `infra/stacks/worker_service_stack.py`: `WorkerServiceStack` using
-  a variant of `FargateWebService` (or a second construct in the same file)
-  with ALB attachment disabled for `worker` — no target group, listener, or
+  a variant of `KiwiFargateWebService` (or a second construct in the same
+  file) with ALB attachment disabled for `worker` — no target group, listener, or
   listener rule
 - [ ] Add a container-level health check to `worker`'s task definition:
-  `ecs.HealthCheck(command=["CMD-SHELL", "pgrep -f 'python -m app.worker' ||
-  exit 1"], ...)`
+  `ecs.HealthCheck(command=["CMD-SHELL", "pgrep -f 'python -m
+  worker_app.worker' || exit 1"], ...)`
 - [ ] Register in `stacks/__init__.py`; instantiate in `app.py`, taking
-  `NetworkStack`'s VPC/`fargate-services-sg` and `ClusterStack`'s cluster
-  (no ALB input — `worker` doesn't need one)
+  `NetworkStack`'s VPC/`fargate-services-sg` and `SharedServicesStack`'s
+  cluster (no listener input — `worker` doesn't need one)
 - [ ] Verify: `cdk synth` succeeds; `cdk deploy WorkerServiceStack -c
   env=dev`; `aws ecs describe-services` shows `desiredCount == runningCount
   == 1` with no `STOPPED` tasks accumulating; confirm zero target groups or
@@ -178,13 +205,15 @@ depends on them).
 
 ## Docs
 
-- [ ] Rewrite `infra/CLAUDE.md`: move `cluster_stack.py`/
+- [ ] Rewrite `infra/CLAUDE.md`: move `shared_services_stack.py`/
   `identity_service_stack.py`/`app_api_service_stack.py`/
   `worker_service_stack.py` out of "Not yet present" into the stack-by-stack
-  description; document `ClusterStack`'s role and why it's a separate stack
-  (service-stack independence); document the `FargateWebService` construct
-  and the `/identity`/`/app-api` path-prefix ALB routing convention with the
-  plain `curl` invocation for reaching each service
+  description; document `SharedServicesStack`'s role (cluster + shared ALB
+  listener) and why it's a separate stack (service-stack independence —
+  including the destroy-coupling bug the listener hit when it was first
+  tried inside `IdentityServiceStack`); document the `KiwiFargateWebService`
+  construct and the `/identity`/`/app-api` path-prefix ALB routing
+  convention with the plain `curl` invocation for reaching each service
 
 ## Verification & wrap-up
 
@@ -200,9 +229,10 @@ depends on them).
   iam get-role-policy` / CDK-synthesized IAM policy review)
 - [ ] Destroy-independence test: `cdk destroy IdentityServiceStack -c
   env=dev` alone, then confirm `app-api` and `worker`'s services are
-  unaffected and still healthy/running — concrete proof `ClusterStack`
-  actually decoupled the three service stacks from each other; redeploy
-  `IdentityServiceStack` afterward to restore full state
+  unaffected and still healthy/running — concrete proof `SharedServicesStack`
+  (cluster *and* listener) actually decoupled the three service stacks from
+  each other; redeploy `IdentityServiceStack` afterward to restore full
+  state
 - [ ] `cdk deploy --all -c env=dev` from a clean slate succeeds end-to-end;
   `cdk destroy --all -c env=dev` tears down all four new stacks cleanly with
   no orphaned ECS services, task definitions, clusters, or target groups
