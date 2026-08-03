@@ -222,15 +222,17 @@ depends on them).
 
 ## Docs
 
-- [ ] Rewrite `infra/CLAUDE.md`: move `shared_services_stack.py`/
+- [x] Rewrite `infra/CLAUDE.md`: moved `shared_services_stack.py`/
   `identity_service_stack.py`/`app_api_service_stack.py`/
   `worker_service_stack.py` out of "Not yet present" into the stack-by-stack
-  description; document `SharedServicesStack`'s role (cluster + shared ALB
+  description; documented `SharedServicesStack`'s role (cluster + shared ALB
   listener) and why it's a separate stack (service-stack independence —
   including the destroy-coupling bug the listener hit when it was first
-  tried inside `IdentityServiceStack`); document the `KiwiFargateWebService`
-  construct and the `/identity`/`/app-api` path-prefix ALB routing
-  convention with the plain `curl` invocation for reaching each service
+  tried inside `IdentityServiceStack`); documented both `_fargate_service.py`
+  constructs (`KiwiFargateWebService` and `KiwiFargateWorkerService`, and why
+  they're separate rather than one flagged construct) and the
+  `/identity`/`/app-api` path-prefix ALB routing convention with the plain
+  `curl` invocation for reaching each service
 
 ## Verification & wrap-up
 
