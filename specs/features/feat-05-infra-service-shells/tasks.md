@@ -184,24 +184,41 @@ depends on them).
 
 ## Worker keep-alive + service stack
 
-- [ ] `backend/services/worker/app/worker.py`: add a minimal blocking loop
-  after the existing `TODO` (e.g. `while True: time.sleep(3600)`) with a
-  comment marking it as a Phase-0 placeholder Phase 6's real SQS polling
-  loop replaces outright
-- [ ] Add `infra/stacks/worker_service_stack.py`: `WorkerServiceStack` using
-  a variant of `KiwiFargateWebService` (or a second construct in the same
-  file) with ALB attachment disabled for `worker` — no target group, listener, or
-  listener rule
-- [ ] Add a container-level health check to `worker`'s task definition:
+- [x] `backend/services/worker/worker_app/worker.py` (path corrected — the
+  package rename in the earlier "Contract + route-prefix change" commit
+  moved this from `app/worker.py`): add a minimal blocking loop after the
+  existing `TODO` (`while True: time.sleep(3600)`) with a comment marking
+  it as a Phase-0 placeholder Phase 6's real SQS polling loop replaces
+  outright
+- [x] Add `infra/stacks/worker_service_stack.py`: `WorkerServiceStack`.
+  Rather than adding flags to `KiwiFargateWebService` to conditionally
+  disable ALB attachment, added a second, separate construct —
+  `KiwiFargateWorkerService` in the same `_fargate_service.py` — since
+  `worker`'s shape genuinely differs (no container port, no target group,
+  a `command`-based health check instead of an HTTP one) rather than being
+  the same shape with one flag flipped. Duplicates ~15 lines of log
+  group/task-definition/`FargateService` setup rather than sharing it,
+  deliberately, per this repo's bias against premature abstraction for two
+  structurally-different callers.
+- [x] Container-level health check on `worker`'s task definition:
   `ecs.HealthCheck(command=["CMD-SHELL", "pgrep -f 'python -m
-  worker_app.worker' || exit 1"], ...)`
-- [ ] Register in `stacks/__init__.py`; instantiate in `app.py`, taking
-  `NetworkStack`'s VPC/`fargate-services-sg` and `SharedServicesStack`'s
-  cluster (no listener input — `worker` doesn't need one)
-- [ ] Verify: `cdk synth` succeeds; `cdk deploy WorkerServiceStack -c
-  env=dev`; `aws ecs describe-services` shows `desiredCount == runningCount
-  == 1` with no `STOPPED` tasks accumulating; confirm zero target groups or
-  listener rules reference `worker`'s service
+  worker_app.worker' || exit 1"])`
+- [x] Registered `WorkerServiceStack` in `stacks/__init__.py`; instantiated
+  in `app.py`, taking `NetworkStack`'s `fargate-services-sg` and
+  `SharedServicesStack`'s cluster (no `vpc` or `listener` input — neither
+  is used inside `KiwiFargateWorkerService`, since there's no target group
+  needing `vpc` and no ALB attachment needing a `listener`; caught this
+  myself before it repeated the earlier unused-parameter issue)
+- [x] Verify: `cd infra && uv run cdk synth` succeeds with all six stacks.
+  Inspected `dev-kiwi-worker-service-stack.template.json` directly: zero
+  `AWS::ElasticLoadBalancingV2::TargetGroup`/`Listener` resources present;
+  only `AWS::ECS::Service`, `AWS::ECS::TaskDefinition`, IAM, and
+  `AWS::Logs::LogGroup`. `make test-backend` still passes (16 passed)
+  after the `worker.py` change.
+- [ ] Verify: `cdk deploy WorkerServiceStack -c env=dev`; `aws ecs
+  describe-services` shows `desiredCount == runningCount == 1` with no
+  `STOPPED` tasks accumulating. **Not yet run** — same reason as
+  identity/app-api's open live-deploy items above.
 
 ## Docs
 

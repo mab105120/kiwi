@@ -5,6 +5,7 @@ from stacks import (
     SharedServicesStack,
     IdentityServiceStack,
     AppApiServiceStack,
+    WorkerServiceStack,
 )
 
 app = cdk.App()
@@ -65,6 +66,15 @@ app_api_service_stack = AppApiServiceStack(
     vpc=network_stack.vpc,
     security_group=network_stack.fargate_services_security_group,
     listener=shared_services_stack.listener,
+    env=aws_env,
+)
+
+worker_service_stack = WorkerServiceStack(
+    app,
+    f"{env_name}-kiwi-worker-service-stack",
+    env_name=env_name,
+    cluster=shared_services_stack.cluster,
+    security_group=network_stack.fargate_services_security_group,
     env=aws_env,
 )
 

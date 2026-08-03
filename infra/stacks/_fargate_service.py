@@ -75,3 +75,58 @@ class KiwiFargateWebService(Construct):
         )
 
         self.service.attach_to_application_target_group(self.target_group)
+
+
+class KiwiFargateWorkerService(Construct):
+    def __init__(
+        self,
+        scope: Construct,
+        id: str,
+        *,
+        cluster: ecs.Cluster,
+        security_group: ec2.SecurityGroup,
+        image_asset_dir: str,
+        dockerfile: str,
+        command_health_check: list[str],
+        env_name: str,
+    ):
+        super().__init__(scope, id)
+
+        log_group = logs.LogGroup(
+            self,
+            "LogGroup",
+            log_group_name=f"/ecs/{env_name}/{id}",
+            retention=logs.RetentionDays.ONE_WEEK,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        task_definition = ecs.FargateTaskDefinition(
+            self,
+            "TaskDef",
+            cpu=256,
+            memory_limit_mib=512,
+        )
+
+        task_definition.add_container(
+            "Container",
+            image=ecs.ContainerImage.from_asset(
+                directory=image_asset_dir,
+                file=dockerfile,
+            ),
+            logging=ecs.LogDriver.aws_logs(stream_prefix=id, log_group=log_group),
+            health_check=ecs.HealthCheck(command=command_health_check),
+        )
+
+        self.service = ecs.FargateService(
+            self,
+            "Service",
+            cluster=cluster,
+            task_definition=task_definition,
+            desired_count=1,
+            security_groups=[security_group],
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+            ),
+            assign_public_ip=False,
+            circuit_breaker=ecs.DeploymentCircuitBreaker(rollback=True),
+        )
