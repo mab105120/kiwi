@@ -7,4 +7,4 @@ RUN pip install /app/libs/platform_common
 # then the service
 COPY services/worker /app/service
 RUN pip install /app/service
-CMD ["python", "-m", "app.worker"]
+CMD ["python", "-m", "worker_app.worker"]

@@ -12,8 +12,8 @@ no HTTP API).
 
 ## Conventions
 
-- Entry point is `app/worker.py`'s poll loop, run via `python -m app.worker` (not
-  gunicorn — there is no web server here).
+- Entry point is `worker_app/worker.py`'s poll loop, run via
+  `python -m worker_app.worker` (not gunicorn — there is no web server here).
 - Owns its own MySQL schema exclusively (constitution P-2) — the grades/feedback
   tables; migrations live in `migrations/` (Alembic).
 - Any change to the consumed message shape requires updating

@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: TODO - auth, users, courses, enrollments, roles.
 paths:
-  /healthz:
+  /identity/healthz:
     get:
       summary: Health check
       operationId: getHealthz
@@ -19,31 +19,3 @@ paths:
                   status:
                     type: string
                     example: ok
-  /auth/token:
-    post:
-      summary: TODO - issue an auth token
-      operationId: postAuthToken
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                username:
-                  type: string
-                password:
-                  type: string
-              required:
-                - username
-                - password
-      responses:
-        "200":
-          description: TODO - token issued
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  accessToken:
-                    type: string

@@ -13,7 +13,7 @@ dependencies = [
 platform-common = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
-packages = ["app"]
+packages = ["worker_app"]
 
 [build-system]
 requires = ["hatchling"]

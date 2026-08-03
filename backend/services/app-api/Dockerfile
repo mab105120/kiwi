@@ -7,4 +7,4 @@ RUN pip install /app/libs/platform_common
 # then the service
 COPY services/app-api /app/service
 RUN pip install /app/service
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:create_app()"]
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "api_app:create_app()"]

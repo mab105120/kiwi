@@ -231,6 +231,13 @@ informed by real usage instead of guessed at.
 - Load/scale pass on `worker` (grading queue depth, Fargate autoscaling).
 - Security review across S-1..S-5 and a real pentest of exam confidentiality
   (S-3) and grade access (S-4) boundaries.
+- HTTPS/TLS on the ALB's client-facing listener (ACM certificate + a real
+  domain, likely via Route53) — deferred since `feat-03`, still unassigned
+  to any feature as of `feat-05`. Note this phase sits after the entire
+  exams and assignments tracks, meaning real student/instructor traffic
+  (exam content, PII) would run over plain HTTP until this phase unless
+  revisited earlier — worth a conscious call once Phase 1 introduces real
+  auth/session traffic, rather than defaulting to "wait until the end."
 
 ---
 
